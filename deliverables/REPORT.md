@@ -308,7 +308,7 @@ cho máy khi và chỉ khi nó có một **referent kiểm chứng được** �
 | R2 Nguồn có thật | ✅ chính | — | — | Referent = tập `(doc_id, section_id)` sinh từ corpus. So khớp tập hợp, không cần đọc hiểu. Đã có `citation_exists`. |
 | R3 Quote nguyên văn | ✅ chính | — | — | Referent = chính văn bản section đã cite. Kiểm bằng so chuỗi token. Đã có `quote_verbatim`. |
 | R4 Đúng scope | ✅ chính | — | 🔸 row `unclear` | Referent = `expected_scope` nhóm gán sẵn trong dataset. Đã có `scope_match`. Riêng 1 row `unclear` (`sc-40`) không có đáp án deterministic — code cố ý bỏ qua, để người chấm. |
-| R5 Groundedness | — | ✅ chính | 🔸 audit 10% | Referent **một phần**: nguồn có thật thì code xác nhận được, nhưng "khẳng định này có được nguồn chống đỡ không" phải đọc hiểu cả hai đoạn. Judge sàng, người kiểm mẫu canh drift. |
+| R5 Groundedness | — | ✅ chính | 🔸 audit 10% | Referent **một phần**: nguồn có thật thì code xác nhận được, nhưng "khẳng định này có được nguồn chống đỡ không" phải đọc hiểu cả hai đoạn. Judge sàng, người kiểm mẫu canh drift. *Xác nhận sau calibrate: 7/9 = 77% trên phần việc đúng của nó — xem mục 5.* |
 | R6 Ranh giới sư phạm | — | 🔸 sàng lọc | ✅ quyết | Referent một phần và rất mỏng. Ranh giới "hướng dẫn cách làm" với "làm hộ" là câu hỏi mức độ, không phải có/không — đặc biệt `sc-25` (xin điền nốt *một phần*). Judge nêu nghi ngờ, người quyết mọi case bị cờ. |
 | R7 Chất lượng sư phạm | — | — | ✅ chính | **Không có referent.** "Giải thích đúng tầm người hỏi" quy về đúng phán đoán của người đọc. Theo s41 đây là loại không bao giờ giao máy chấm. |
 | R8 Follow-up có giá trị | 🔸 đếm số lượng | 🔸 sàng lọc | ✅ quyết chất lượng | Tách đôi: "đúng 3 câu" có referent cứng → code (đã nằm trong `followup_count`). "3 câu này có đào sâu không" thì không → người. |
@@ -385,6 +385,34 @@ tay ở B3 áp đúng cách đọc này. Dataset v2 sẽ tách thành hai field 
 25/25 · `quote_verbatim` **9/25** · `followup_count` 23/25 · `scope_match` 21/24.
 (`citation_exists` trở đi bỏ qua 2 row JSON vỡ; `scope_match` bỏ thêm row `unclear`.)
 Failure mode lớn nhất là **R3 quote nguyên văn** — xem mục 6.
+
+### Routing dự đoán trước có đúng không — đối chiếu sau khi judge chạy thật
+
+Bảng routing ở trên được viết **trước** khi có `verdicts-v1.jsonl`, thuần từ quy tắc
+referent của slide `s41`. Sau vòng calibrate (mục 5), có thể chấm điểm chính bảng này:
+
+| Dự đoán khi viết mục 4 | Kết quả thực nghiệm | Đúng? |
+|---|---|---|
+| R3 phải giao **code**, không giao judge — referent là văn bản gốc, mà judge không được cấp văn bản gốc | Judge chấm **pass cho 14/19 row có quote sai nguyên văn**. Nó không thấy được lỗi, đúng như dự đoán | ✅ |
+| R5 giao **judge** kèm audit người — referent một phần | Trên 9 row làn code đã cho qua, judge trùng nhãn vàng **7/9 = 77%**. Dùng được nhưng chưa chạm ngưỡng 90%, nên audit vẫn cần | ✅ |
+| R7 giữ cho **người** — không có referent | Chưa có dữ liệu phản chứng; judge không được giao chấm R7 nên không có số để đối chiếu | — |
+
+**Vì sao judge mù với R3 — lý do mang tính cấu trúc, không sửa bằng câu chữ prompt được.**
+`judge.py` (dòng 48–49) chỉ nhét vào prompt hai thứ: `answer` và `sources` — cả hai đều do
+chính tutor tự khai. Nội dung thật của section trong corpus **không bao giờ được đưa vào**.
+Hỏi một model "quote này có nguyên văn không" mà không đưa văn bản gốc thì nó chỉ còn cách
+đoán theo hình thức: quote trông có vẻ trích dẫn, có thuật ngữ đúng, thế là pass. Đây
+chính là định nghĩa "không có referent" ở s41 — và là bằng chứng mạnh nhất cho thấy quy
+tắc đó dùng được để quyết định routing **trước khi tốn tiền chạy judge**.
+
+Hệ quả cho việc chia làn: nếu vòng sau muốn judge chấm được R3 thì phải **sửa `judge.py`
+để bơm nội dung section vào prompt**, không phải sửa `judge_prompt.md`. Nhưng khi đã bơm
+được văn bản gốc vào thì `quote_verbatim` (so chuỗi token, 0 đồng, deterministic) vẫn làm
+việc đó tốt hơn — nên kết luận giữ nguyên: **R3 ở lại làn code vĩnh viễn**.
+
+Chi phí một vòng judge để so sánh: 65.647 token, latency trung bình 11,4s/câu — rẻ hơn
+một vòng tutor (904k token, 39,3s/câu) khoảng 14 lần, nhưng vẫn đắt hơn làn code vô hạn
+lần vì làn code không gọi API.
 
 ---
 
