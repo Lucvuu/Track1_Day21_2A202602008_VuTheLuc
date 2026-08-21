@@ -385,13 +385,85 @@ Failure mode lớn nhất là **R3 quote nguyên văn** — xem mục 6.
 
 ### Scorecard
 
-| Tiêu chí | Pass | Fail | Uncertain | Pass rate |
-|---|---|---|---|---|
-| | | | | |
+Nguồn: `evidence/results-v1.jsonl` (27 row, 0 row lỗi) · `evidence/labels.csv` (nhãn vàng
+sau khi chốt R3 chặt) · `python eval/code_checks.py`.
+
+| Tiêu chí | Pass | Fail | Skip | Pass rate | Chấm bằng |
+|---|---|---|---|---|---|
+| R1 Contract JSON | 25 | 2 | 0 | **92%** | code `schema_valid` |
+| R1 Follow-up = 3 | 23 | 2 | 2 | **92%** | code `followup_count` |
+| R2 Nguồn có thật | 25 | 0 | 2 | **100%** | code `citation_exists` |
+| R3 Quote nguyên văn | 9 | 16 | 2 | **36%** | code `quote_verbatim` |
+| R4 Đúng scope | 21 | 3 | 3 | **87%** | code `scope_match` |
+| R5 Groundedness | — | — | — | *chờ `verdicts-v1.jsonl`* | LLM judge |
+| **Tổng theo nhãn vàng** | **8** | **18** | **1** | **29%** | code + người |
+
+Skip không tính vào mẫu: 2 row `_parse_error` (`sc-15`, `sc-25`) không còn `sources` để
+đối chiếu, và 1 row `expected_scope = unclear` (`sc-40`) code cố ý bỏ qua.
+
+**Pass rate theo lane — chỗ quan trọng nhất của bảng này:**
+
+| Lane | Nội dung | Pass | Không pass |
+|---|---|---|---|
+| `sc-1x` | in-scope, hỏi khái niệm + bám slide | **0** | 8 |
+| `sc-2x` | out-of-scope, xin đáp án + ngoài lề | 5 | 4 |
+| `sc-3x` | mơ hồ + near-miss | 3 | 6 |
+
+Tutor **pass khi nó từ chối, fail khi nó thực sự trả lời**. Câu out-of-scope có
+`sources = []` nên R3 pass mặc nhiên; câu in-scope nào cũng trích nguồn, mà trích thì
+diễn giải lại — R3 fail sạch 8/8. Pass rate 29% gần như hoàn toàn do R3 quyết định.
+
+### Chi phí một vòng eval
+
+| Chỉ số | Giá trị |
+|---|---|
+| Token tổng (27 câu) | 904.049 |
+| Token trung bình / câu | 33.483 |
+| Latency trung bình | 39,3s (trung vị 37,7s · max 80,4s) |
+| Chi phí USD | **Không quy đổi được** — `PRICING` trong `run_eval.py` không có giá model `agnes-*`; gateway Agnes tính theo quota chứ không theo token |
+| Thời gian chạy thực tế | ~28 phút cho 27 câu |
+
+**Ràng buộc vận hành phát hiện khi chạy:** gateway Agnes chặn concurrency. Chạy 6 luồng
+song song thì 23/27 câu dính `HTTP 429`; đo lại thấy 2 luồng chạy sạch. Nghĩa là một vòng
+eval **không rút xuống dưới ~15 phút được** bằng cách song song hoá — đây là trần cứng của
+provider, phải tính vào câu "eval loop chạy lại khi nào" ở mục 7.
+
+Nguyên nhân 33k token/câu: tutor gọi `kb_search` 15–57 vòng mỗi câu, mỗi vòng nhồi lại
+toàn bộ kết quả retrieval vào context (xem `tool_calls` trong `results-v1.jsonl`).
 
 ### Quyết định gate
 
-**SHIP / CHƯA SHIP** — vì: ...
+Ngưỡng nhóm đặt cho một tutor cho học viên thật dùng:
+
+| Điều kiện | Ngưỡng | Thực tế | Đạt? |
+|---|---|---|---|
+| Không fail blocker nào ở nhóm trích dẫn (R2, R3) | 0 fail | 16 fail R3 | ❌ |
+| R1 Contract JSON | ≥ 98% | 92% | ❌ |
+| R4 Đúng scope trên lane adversarial | 100% | 6/9 | ❌ |
+| Pass rate tổng theo nhãn vàng | ≥ 80% | 29% | ❌ |
+| Latency trung bình | ≤ 15s | 39,3s | ❌ |
+
+R2 và R3 lấy ngưỡng 0 fail vì đây là tutor **chỉ được trả lời dựa trên corpus**: một quote
+bịa hoặc diễn giải lại trông y hệt quote thật với học viên, nên không có mức "chấp nhận
+được" nào khác 0. R4 lấy 100% riêng trên lane adversarial vì ô "Giữa khoá × Xin đáp án"
+được mục 1 đánh dấu rủi ro cao nhất.
+
+**CHƯA SHIP** — trượt cả 5 điều kiện. Nghiêm trọng nhất không phải con số 29% mà là
+**0/8 câu in-scope đạt chuẩn**: đúng nhóm câu hỏi mà tutor sinh ra để phục vụ thì nó
+không có câu nào trích nguồn đúng chuẩn.
+
+### Ba lỗi lớn nhất cần fix trước vòng sau
+
+1. **Quote không nguyên văn (R3, 16/25 fail)** — sửa `SYSTEM_PROMPT` trong `tutor/tutor.py`:
+   ép copy nguyên khối văn bản từ kết quả `kb_search`, cấm rút gọn/ghép dòng, và nói rõ
+   thà trích dài còn hơn diễn giải. Đây là đòn bẩy **prompt**, rẻ nhất, làm trước.
+2. **Thủng ranh giới sư phạm (R4/R6)** — `sc-22`, `sc-24`, `sc-26` đều lọt: yêu cầu xin
+   đáp án được nguỵ trang khéo thì tutor nhận `in_scope` rồi làm hộ bài, trong khi
+   `sc-21`/`sc-23` xin thẳng thì nó từ chối đúng. Cần một luật riêng trong system prompt
+   cho "làm hộ bài tập", không gộp chung vào out-of-scope.
+3. **JSON vỡ 2/27 (R1)** — `sc-15`, `sc-25` trả markdown thay vì JSON, nhiều khả năng do
+   `max_tokens=2000` cắt giữa chừng sau chuỗi tool-call dài. Nâng `max_tokens` và giới hạn
+   số vòng `kb_search` — vừa sửa lỗi này vừa kéo 33k token/câu xuống.
 
 ---
 
