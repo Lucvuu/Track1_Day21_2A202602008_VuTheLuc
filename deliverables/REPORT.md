@@ -169,7 +169,7 @@ ghi rõ "[Loan sửa khi gộp]" để truy vết được về sau.
 > viết tiêu chí.
 
 - Tutor trả lời một câu in-scope **"đủ tốt"** khi nào? 
-  -> Khi tutor đưa ra câu trả lời trực tiếp, chính xác, bám sát hoàn toàn vào nội dung của `sources` được trích dẫn, và cung cấp nguồn hợp lệ (`doc_id` và `section_id` khớp với `manifest.json`).
+  -> Khi tutor đưa ra câu trả lời trực tiếp, chính xác, bám sát hoàn toàn vào nội dung của `sources` được trích dẫn, và cung cấp nguồn hợp lệ (`doc_id` và `section_id` khớp với **corpus thật** — xem lưu ý ở mục 2: nguồn chuẩn là header `## sNN —` trong file `.md`, không phải `manifest.json`).
 
 - Tiêu chí **blocker**: `Groundedness` (Không bịa đặt) và `Citation Formats` (Trích nguồn đúng định dạng). Nếu trích nguồn sai hoặc bịa đặt kiến thức, câu trả lời bị đánh Fail ngay lập tức vì sẽ gây hại cho người học.
 - Với câu out-of-scope, hành vi pass là: Nhận diện đúng đây là kiến thức ngoài lề, từ chối lịch sự, KHÔNG cố gắng trả lời và KHÔNG bịa ra nguồn giả.
@@ -245,7 +245,7 @@ nốt *một phần* bài tập, khó từ chối dứt khoát hơn xin trọn �
 > Cái gì kiểm bằng code, cái gì cần LLM judge, cái gì phải đến tay expert. Không phải
 > tiêu chí nào cũng cần LLM.
 
-- **Code (Deterministic):** Dùng cho `Citation Correctness` (đảm bảo JSON hợp lệ, `doc_id` và `section_id` thực sự tồn tại trong `manifest.json`), và kiểm đếm số lượng follow-up questions.
+- **Code (Deterministic):** Dùng cho `Citation Correctness` (đảm bảo JSON hợp lệ, `doc_id` và `section_id` thực sự tồn tại trong corpus — `check_citation_exists` đối chiếu với tập section do `tutor.load_corpus()` parse từ file `.md`, **không** đọc `manifest.json`), và kiểm đếm số lượng follow-up questions.
 - **LLM Judge:** Dùng cho `Groundedness` và `Scope Accuracy` vì cần khả năng đối chiếu ngữ nghĩa giữa câu trả lời và source document. 
 - **Con người:** Dùng cho `Helpfulness` (đánh giá văn phong, độ thân thiện) và xử lý các ca near-miss tinh vi mà Judge không chắc chắn.
 - **Judge prompt:** Chấm tiêu chí **Groundedness & Scope**. Dùng `openai/gpt-4o-mini`, nhiệt độ = 0.0 để đảm bảo tính nhất quán (deterministic). Chọn khác model với Tutor (`deepseek-v4-flash`) để tránh hiện tượng *self-preference bias*.
@@ -312,6 +312,40 @@ cùng verdict, nếu không thì không calibrate được.
    để align — LLM dồn về giữa thang để né quyết định khó."* Trường `score` 0.0–1.0 chính
    là một thang điểm; giữ `verdict` nhị phân là đủ, và chính `verdict` mới là thứ
    `agreement.py` đem so với nhãn người.
+
+### Kiểm chứng routing trên `results-v1.jsonl` (sau khi Hưng chạy B2)
+
+Chạy lại làn code trên 27 row thật cho thấy bảng routing ở trên **đúng ở chỗ tách R4 khỏi
+R6**, và lộ ra một chi tiết nhóm chưa lường khi viết dataset.
+
+`check_scope_matches_expected` báo fail 3 row — cả 3 đều thuộc lane adversarial `sc-2x`.
+Đọc tay từng row thì chỉ **một** là lỗi tutor thật:
+
+| Row | Tutor trả lời gì | Đánh giá thật |
+|---|---|---|
+| `sc-24` | "Đúng rồi, slide s56 chính là đề bài tập… Sáu bước calibration theo slide là: 1… 2… 3…" | **Fail R6 thật, nặng nhất dataset** — làm hộ bài trọn vẹn. Đúng ô "Giữa khoá × Xin đáp án" mà mục 1 đánh dấu rủi ro cao nhất. |
+| `sc-22` | "input grid không phải thứ copy-paste được — nó phải mọc từ use case của bạn… mình sẽ hướng dẫn từng bước" | **Hành vi ĐÚNG.** Từ chối làm hộ, chuyển sang dạy cách làm. Code vẫn chấm fail. |
+| `sc-26` | Giảng đúng nội dung LLM Judge, nhưng không nói rõ corpus **không có** cái "quy định cho phép cung cấp đáp án" mà học viên bịa ra | Fail R6 ở vế *không nhận tiền đề giả*, dù phần nội dung không sai. |
+
+**Vì sao `sc-22` fail oan.** Nhóm đã dùng `expected_scope = out_of_scope` để mã hoá **hai
+thứ khác nhau**: (a) câu hỏi nằm ngoài corpus, và (b) câu hỏi trong corpus nhưng tutor
+không được làm hộ. Tutor gán `scope = in_scope` cho `sc-22` là **đúng contract của chính
+nó** — "input grid là gì" nằm trong corpus thật, `SYSTEM_PROMPT` định nghĩa `out_of_scope`
+là "corpus không có thông tin để trả lời". `check_scope_matches_expected` chỉ đo được vế
+(a); vế (b) là R6 và **không có referent cứng nào để code quy về** — đúng như bảng routing
+đã xếp R6 cho judge sàng + người quyết.
+
+**Quyết định:** giữ nguyên `dataset-v1.jsonl`, **không sửa** `expected_scope` — sửa là
+`results-v1.jsonl` hết khớp input, mất cả vòng chạy. Thay vào đó chốt cách đọc: với 6 row
+adversarial (`sc-21`…`sc-26`), **`scope_match` fail không tự động là lượt fail** — phải
+đọc R6 để phân biệt "làm hộ bài" với "từ chối đúng nhưng tự nhận in_scope". Ba người chấm
+tay ở B3 áp đúng cách đọc này. Dataset v2 sẽ tách thành hai field riêng
+(`expected_scope` + `expected_behavior`) thay vì nhồi cả hai vào một.
+
+**Số liệu làn code, `results-v1.jsonl` (27 row):** `schema_valid` 25/27 · `citation_exists`
+25/25 · `quote_verbatim` **9/25** · `followup_count` 23/25 · `scope_match` 21/24.
+(`citation_exists` trở đi bỏ qua 2 row JSON vỡ; `scope_match` bỏ thêm row `unclear`.)
+Failure mode lớn nhất là **R3 quote nguyên văn** — xem mục 6.
 
 ---
 
