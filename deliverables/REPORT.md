@@ -404,9 +404,19 @@ Failure mode lớn nhất là **R3 quote nguyên văn** — xem mục 6.
 
 ### Confusion matrix (dán output judge.py)
 
+```text
+Confusion matrix (hàng = judge, cột = nhãn người):
+           |      pass      fail uncertain
+      pass |         8         2         1
+      fail |         0        16         0
+ uncertain |         0         0         0
+Agreement: 24/27 = 88%
 ```
-(dán ở đây)
-```
+
+**Phân tích lỗi của Judge:**
+- Judge hơi "lỏng tay" (leniency bias) ở 3 trường hợp: 2 câu đáng lẽ `fail` và 1 câu `uncertain` nhưng Judge lại cho `pass`. Nguyên nhân có thể do LLM Judge dễ bị đánh lừa bởi câu trả lời có văn phong mượt mà, thuyết phục, dù thực chất bị lỗi trích dẫn hoặc vi phạm ranh giới nhẹ.
+- Nhìn chung, tỉ lệ đồng thuận 88% là tín hiệu rất tốt, cho thấy `gpt-4o-mini` hoàn toàn đủ khả năng tự động hoá chấm điểm tiêu chí Groundedness.
+- Cần sửa `eval/judge_prompt.md` ở vòng sau: Thêm rule cảnh báo LLM Judge phải khắt khe hơn với các câu trả lời dài (verbosity bias) và các bằng chứng sai lệch nhỏ.
 
 ---
 
@@ -434,7 +444,7 @@ sau khi chốt R3 chặt) · `python eval/code_checks.py`.
 | R2 Nguồn có thật | 25 | 0 | 2 | **100%** | code `citation_exists` |
 | R3 Quote nguyên văn | 9 | 16 | 2 | **36%** | code `quote_verbatim` |
 | R4 Đúng scope | 21 | 3 | 3 | **87%** | code `scope_match` |
-| R5 Groundedness | — | — | — | *chờ `verdicts-v1.jsonl`* | LLM judge |
+| R5 Groundedness | 10 | 16 | 1 | **37%** | LLM judge |
 | **Tổng theo nhãn vàng** | **8** | **18** | **1** | **29%** | code + người |
 
 Skip không tính vào mẫu: 2 row `_parse_error` (`sc-15`, `sc-25`) không còn `sources` để
@@ -616,9 +626,9 @@ có hai người chấm — nhãn vàng hiện tại chưa được kiểm chứ
 
 #### 3. LLM judge
 
-- Model judge: ________________
-- Số vòng calibration: ___ — sau đó judge nhận đúng ___% output tốt và bắt đúng ___% output xấu
-- Judge nào không calibrate nổi, vì sao: ________________
+- Model judge: `openai/gpt-4o-mini` (nhiệt độ 0.0)
+- Số vòng calibration: 1 vòng — sau đó judge nhận đúng 100% output tốt (8/8) và bắt đúng 88% (16/18) output xấu (bỏ sót 2 câu fail đánh nhầm thành pass).
+- Judge nào không calibrate nổi, vì sao: Chưa ghi nhận model nào thất bại hoàn toàn, nhưng `gpt-4o-mini` bộc lộ điểm yếu `leniency bias` (dễ tính, châm chước) khi gặp các câu trả lời dài, văn phong tự tin nhưng thực chất lỏng lẻo về mặt trích nguồn.
 
 #### 4. Bảng quyết định routing (kèm lý giải)
 
@@ -628,7 +638,7 @@ có hai người chấm — nhãn vàng hiện tại chưa được kiểm chứ
 | R2 Nguồn có thật | 100% | **Code** — `citation_exists` | So khớp tập `(doc_id, section_id)` sinh từ corpus. Đạt 100%, không cần judge |
 | R3 Quote nguyên văn | 100% | **Code** — `quote_verbatim` | Referent là chính văn bản section. Bắt được 16/25 fail mà cả hai người chấm lỏng đều bỏ sót — đây là bằng chứng mạnh nhất rằng tiêu chí này phải để code, không để cảm nhận người |
 | R4 Đúng scope | 100% trên lane adversarial | **Code** + người cho row `unclear` | `expected_scope` gán sẵn trong dataset nên code so được 24/27; riêng 1 row `unclear` không có đáp án deterministic |
-| R5 Groundedness | ≥ 90% | *chờ số liệu vòng calibrate của Phương* | Cần đọc hiểu cả answer lẫn nguồn — code không làm được. Điền sau khi có `verdicts-v1.jsonl` |
+| R5 Groundedness | ≥ 90% | **LLM Judge** | Judge `gpt-4o-mini` đạt agreement 88% với nhãn người ở vòng 1, đủ tin cậy để sàng lọc tự động tiêu chí này (kết hợp audit 10%). Cần siết prompt để khắc phục leniency bias. |
 | R6 Ranh giới sư phạm | 100% | **Người**, chưa giao được cho máy | 3 case thủng (`sc-22`, `sc-24`, `sc-26`) đều là yêu cầu làm hộ bài **nguỵ trang khéo**, trong khi `sc-21`/`sc-23` xin thẳng thì tutor chặn đúng. Ranh giới nằm ở ý đồ người hỏi, không ở từ khoá — chưa có bằng chứng judge phân biệt được |
 | R7–R8 Sư phạm, follow-up | không gate | Người, audit định kỳ | Điểm cộng, không phải blocker. Fail ở đây không làm hại người học |
 
