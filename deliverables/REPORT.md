@@ -434,8 +434,32 @@ lần vì làn code không gọi API.
 `sc-3x`). Nhãn vàng `evidence/labels.csv` = 18 fail / 8 pass / 1 uncertain.
 
 **Model judge:** `agnes-2.0-flash` qua gateway Agnes AI — khác model tutor
-(`agnes-2.5-flash`) để tránh tự chấm chéo. 27 trace `judge-run` trên Braintrust project
-`ai-evaluation`. Tổng 58.642 token, latency trung bình 17,9s/câu.
+(`agnes-2.5-flash`) để tránh tự chấm chéo. Tổng 58.642 token, latency trung bình 17,9s/câu.
+
+### Tracing — mọi run đều được log
+
+| Hạng mục | Giá trị |
+|---|---|
+| Backend | Braintrust (`braintrust` 0.34.0) |
+| Link project | https://www.braintrust.dev/app/FPT/p/ai-evaluation |
+| Org / Project | `FPT` / `ai-evaluation` |
+| Tổng số trace | **128** |
+| Tên span | `tutor-run` (từ `run_eval.py`) · `judge-run` (từ `judge.py`) |
+| Minh chứng | [`evidence/braintrust-screenshots.md`](evidence/braintrust-screenshots.md) + 2 ảnh chụp · [`evidence/trace-summary.md`](evidence/trace-summary.md) |
+
+**Ba điểm cần đọc đúng, ghi rõ để tránh hiểu nhầm khi đối chiếu:**
+
+1. **Link project cần quyền thành viên org `FPT`.** Người ngoài mở sẽ thấy *"This page is
+   restricted or does not exist."* Nội dung quan sát trực tiếp trên giao diện đã được ghi
+   lại đầy đủ trong `evidence/braintrust-screenshots.md` kèm ảnh chụp.
+2. **Cột `Duration` / `Tokens` / `LLM cost` trên Braintrust hiển thị 0 — không phải vì
+   không có lời gọi model.** `eval/tracing.py` tạo span với `type="task"` và truyền
+   `metrics` là dict tự đặt; các cột tổng hợp dựng sẵn của Braintrust chỉ tự điền cho span
+   `type="llm"`. Số liệu vẫn nằm trong trace, và con số thật kiểm chứng được ở
+   `results-v1.jsonl` (904.049 token) và `verdicts-v*.jsonl`.
+3. **128 trace nhiều hơn 27 câu vì mỗi lần chạy lại đều log mới** — gồm cả vòng judge 0 bị
+   cắt cụt và các vòng tutor bị dừng giữa chừng. Đó là dấu vết của quá trình calibrate,
+   không phải lỗi đếm. Phân rã chi tiết trong `evidence/braintrust-screenshots.md`.
 
 ### Vòng 0 — một lỗi hạ tầng giả dạng kết quả judge
 
@@ -649,7 +673,7 @@ diễn giải lại — R3 fail sạch 8/8. Pass rate 29% gần như hoàn toàn
 | Token tổng (27 câu) | 904.049 |
 | Token trung bình / câu | 33.483 |
 | Latency trung bình | 39,3s (trung vị 37,7s · max 80,4s) |
-| Chi phí USD | **Không quy đổi được** — `PRICING` trong `run_eval.py` không có giá model `agnes-*`; gateway Agnes tính theo quota chứ không theo token |
+| Chi phí USD | **Không quy đổi được** — `PRICING` trong `run_eval.py` không có giá model `agnes-*`; gateway Agnes tính theo quota chứ không theo token. Braintrust cũng hiện `$0 LLM cost` vì model chạy qua gateway Agnes, không tiêu credit của Braintrust |
 | Thời gian chạy thực tế | ~28 phút cho 27 câu |
 
 **Ràng buộc vận hành phát hiện khi chạy:** gateway Agnes chặn concurrency. Chạy 6 luồng

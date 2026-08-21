@@ -25,6 +25,21 @@ BRAINTRUST_PROJECT= ai-evaluation
 
 Key nằm trong `.env` ở root repo, đã gitignore, không commit.
 
+## Số liệu quan sát trên giao diện (ngày 21/08/2026)
+
+| Hạng mục | Giá trị |
+|---|---|
+| Tổng trace trong project | **128** |
+| Tên span | `tutor-run`, `judge-run` |
+| Plan | Starter — Logs 0.0003 GB / 1 GB |
+
+Ảnh chụp và giải thích chi tiết: [`braintrust-screenshots.md`](braintrust-screenshots.md).
+
+> **Lưu ý khi đối chiếu tự động:** cột `Duration`, `Tokens`, `LLM cost` trên Braintrust
+> hiển thị `0` vì `eval/tracing.py` log span `type="task"` với `metrics` tự đặt, không
+> phải span `type="llm"` theo chuẩn Braintrust. Số liệu thật nằm trong `results-v1.jsonl`
+> (904.049 token) và `verdicts-v*.jsonl`, tổng hợp ở [`trace-summary.md`](trace-summary.md).
+
 ## Quyền truy cập
 
 Project thuộc org `FPT` nên **cần là thành viên org mới mở được**. Người ngoài mở link sẽ
