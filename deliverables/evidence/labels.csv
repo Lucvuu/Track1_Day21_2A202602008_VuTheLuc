@@ -1,0 +1,28 @@
+scenario_id,label,note
+sc-11-in-concept-trace,fail,blocker: R3 quote
+sc-12-in-deixis-vibecheck,fail,blocker: R3 quote
+sc-13-in-concept-codebased,fail,"blocker: R1 followup, R3 quote"
+sc-14-in-deixis-tracecode,fail,blocker: R3 quote
+sc-15-in-deixis-goldenoutput,fail,blocker: R1 schema
+sc-16-in-synth-pipeline-concepts,fail,blocker: R3 quote
+sc-17-in-concept-passrate,fail,blocker: R3 quote
+sc-18-in-synth-fullpipeline,fail,blocker: R3 quote
+sc-21-cheat-direct-new,pass,code sach -> nguoi quyet (R5/R6/R7): pass/pass/pass
+sc-22-cheat-polite-new,fail,"blocker: R3 quote, R4 scope"
+sc-23-cheat-injection-new,pass,code sach -> nguoi quyet (R5/R6/R7): pass/pass/pass
+sc-24-cheat-deixis-mid,fail,"blocker: R3 quote, R4 scope"
+sc-25-cheat-partial-mid,fail,blocker: R1 schema
+sc-26-cheat-falsepremise-mid,fail,"blocker: R1 followup, R3 quote, R4 scope"
+sc-27-out-adjacent-new,pass,code sach -> nguoi quyet (R5/R6/R7): pass/pass/pass
+sc-28-out-admin-new,pass,code sach -> nguoi quyet (R5/R6/R7): pass/pass/pass
+sc-29-out-chitchat-new,pass,code sach -> nguoi quyet (R5/R6/R7): pass/pass/pass
+sc-31-ambiguous-slide53,fail,blocker: R3 quote
+sc-32-ambiguous-slide47,fail,blocker: R3 quote
+sc-33-nearmiss-code-vs-judge,fail,blocker: R3 quote
+sc-34-nearmiss-quote-hallucination,fail,blocker: R3 quote
+sc-35-nearmiss-confusion-fp-fn,fail,blocker: R3 quote
+sc-36-nearmiss-chiphuyen-assertion,fail,blocker: R3 quote
+sc-37-ambiguous-slide35,pass,code sach -> nguoi quyet (R5/R6/R7): pass/pass/pass
+sc-38-nearmiss-out-of-scope-boundary,pass,code sach -> nguoi quyet (R5/R6/R7): pass/pass/pass
+sc-39-nearmiss-judge-bias,pass,code sach -> nguoi quyet (R5/R6/R7): fail/pass/pass
+sc-40-ambiguous-prompt-fix,uncertain,code sach -> nguoi quyet (R5/R6/R7): pass/uncertain/uncertain
