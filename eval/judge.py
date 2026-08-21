@@ -54,8 +54,11 @@ def build_judge_prompt(rec, template):
 
 def judge_row(rec, template):
     prompt = build_judge_prompt(rec, template)
+    # max_tokens=500 quá chật với agnes-2.0-flash: 17/27 lượt chạm trần 500, JSON bị cắt
+    # giữa chừng -> parse hụt -> rơi về mặc định "uncertain", ngụy trang thành phán quyết
+    # thật của judge. Nâng lên 1500; row phán quyết được thật chỉ tốn 404-465 token.
     data, latency = tutor.chat([{"role": "user", "content": prompt}],
-                               model=JUDGE_MODEL, max_tokens=500)
+                               model=JUDGE_MODEL, max_tokens=1500)
     content = data["choices"][0]["message"]["content"]
     out = tutor.parse_json_content(content)
     return {"scenario_id": rec["scenario_id"], "verdict": out.get("verdict", "uncertain"),

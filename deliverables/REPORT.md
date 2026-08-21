@@ -287,7 +287,7 @@ uncertain 1.
 - **Code (Deterministic):** Dùng cho `Citation Correctness` (đảm bảo JSON hợp lệ, `doc_id` và `section_id` thực sự tồn tại trong corpus — `check_citation_exists` đối chiếu với tập section do `tutor.load_corpus()` parse từ file `.md`, **không** đọc `manifest.json`), và kiểm đếm số lượng follow-up questions.
 - **LLM Judge:** Dùng cho `Groundedness` và `Scope Accuracy` vì cần khả năng đối chiếu ngữ nghĩa giữa câu trả lời và source document. 
 - **Con người:** Dùng cho `Helpfulness` (đánh giá văn phong, độ thân thiện) và xử lý các ca near-miss tinh vi mà Judge không chắc chắn.
-- **Judge prompt:** Chấm tiêu chí **Groundedness & Scope**. Dùng `openai/gpt-4o-mini`, nhiệt độ = 0.0 để đảm bảo tính nhất quán (deterministic). Chọn khác model với Tutor (`deepseek-v4-flash`) để tránh hiện tượng *self-preference bias*.
+- **Judge prompt:** Chấm tiêu chí **Groundedness & Scope**. Model thực tế chạy: judge `agnes-2.0-flash`, tutor `agnes-2.5-flash` — cả hai qua gateway Agnes AI (`EVAL_BASE_URL`), nhiệt độ 0.0 để deterministic. Chọn khác model với tutor để tránh *self-preference bias*. (`openai/gpt-4o-mini` và `deepseek-v4-flash` chỉ là mặc định của repo, nhóm không dùng.)
 
 **Trả lời:**
 
@@ -334,7 +334,7 @@ tuy vẫn cho judge sàng trước để đỡ khối lượng.
 R5 + R4** dưới một nhãn "GROUNDEDNESS & SCOPE", xuất `verdict` (pass/fail/uncertain) kèm
 `score` float 0.0–1.0, `rationale`, `issues`.
 
-**Model & nhiệt độ.** Judge `openai/gpt-4o-mini`, tutor `deepseek/deepseek-v4-flash` —
+**Model & nhiệt độ.** Judge `agnes-2.0-flash`, tutor `agnes-2.5-flash` (cả hai qua gateway Agnes AI) —
 **khác họ model**, đúng nguyên tắc s52: chấm bài "người nhà" thì xác suất cho qua lỗi cao
 hơn 50% (Pombal 2026). Nhiệt độ: `tutor.chat()` mặc định `temperature=0`, `judge.py` gọi
 mà không truyền tham số này nên judge cũng chạy ở **temperature 0** — cùng input phải ra
@@ -402,21 +402,121 @@ Failure mode lớn nhất là **R3 quote nguyên văn** — xem mục 6.
 - Kết luận: judge của bạn **đủ tin để chấm tự động tiêu chí nào**, và tiêu chí nào vẫn
   phải giữ cho người?
 
-### Confusion matrix (dán output judge.py)
+**Đã gán nhãn tay bao nhiêu row:** 27/27 (Hưng và Loan chấm đủ, Phương chấm 10 câu lane
+`sc-3x`). Nhãn vàng `evidence/labels.csv` = 18 fail / 8 pass / 1 uncertain.
+
+**Model judge:** `agnes-2.0-flash` qua gateway Agnes AI — khác model tutor
+(`agnes-2.5-flash`) để tránh tự chấm chéo. 27 trace `judge-run` trên Braintrust project
+`ai-evaluation`. Tổng 58.642 token, latency trung bình 17,9s/câu.
+
+### Vòng 0 — một lỗi hạ tầng giả dạng kết quả judge
+
+Lần chạy đầu cho ra **17/27 verdict `uncertain`** và agreement 33%. Đọc qua thì tưởng
+judge "lưỡng lự, không dám phán quyết". Mở `raw_content` và `usage` ra soi mới thấy sự
+thật khác hẳn:
+
+| Row | verdict | `completion_tokens` | `raw_content` |
+|---|---|---|---|
+| sc-11 | uncertain | **500** | rỗng |
+| sc-13 | pass | 460 | đầy đủ |
+| sc-14 | uncertain | **500** | `'{\n '` — cụt |
+| sc-15 | fail | 465 | đầy đủ |
+
+**Mọi row `uncertain` đều chạm đúng trần `max_tokens=500`**, mọi row phán quyết được đều
+dưới 500. `judge.py` gọi với `max_tokens=500`, JSON bị cắt giữa chừng, `parse_json_content`
+hụt, rồi `out.get("verdict", "uncertain")` rơi về mặc định. Không phải judge lưỡng lự —
+judge chưa kịp nói hết câu.
+
+**Bài học đáng giá nhất của mục này: giá trị mặc định `uncertain` che mất lỗi hạ tầng.**
+Judge trả rỗng, JSON cắt cụt, API lỗi — tất cả đổ vào cùng một nhãn với "judge thật sự
+lưỡng lự". Nhìn confusion matrix không phân biệt được, và con số 33% trông hoàn toàn hợp
+lý trên giấy. Chỉ `raw_content` + `usage` mới phân biệt được — đúng hai trường phải lưu
+lại cho mọi lần gọi judge.
+
+Bằng chứng giữ nguyên tại `evidence/verdicts-v1-truncated.jsonl`. Sửa: nâng `max_tokens`
+lên 1500 trong `eval/judge.py`. Đây là **sửa lỗi hạ tầng, không tính là vòng calibrate** —
+`judge_prompt.md` không đổi một chữ.
+
+### Vòng 1 — số thật
 
 ```text
 Confusion matrix (hàng = judge, cột = nhãn người):
            |      pass      fail uncertain
-      pass |         8         2         1
-      fail |         0        16         0
+      pass |         7        12         1
+      fail |         1         6         0
  uncertain |         0         0         0
-Agreement: 24/27 = 88%
+Agreement: 13/27 = 48%
 ```
 
-**Phân tích lỗi của Judge:**
-- Judge hơi "lỏng tay" (leniency bias) ở 3 trường hợp: 2 câu đáng lẽ `fail` và 1 câu `uncertain` nhưng Judge lại cho `pass`. Nguyên nhân có thể do LLM Judge dễ bị đánh lừa bởi câu trả lời có văn phong mượt mà, thuyết phục, dù thực chất bị lỗi trích dẫn hoặc vi phạm ranh giới nhẹ.
-- Nhìn chung, tỉ lệ đồng thuận 88% là tín hiệu rất tốt, cho thấy `gpt-4o-mini` hoàn toàn đủ khả năng tự động hoá chấm điểm tiêu chí Groundedness.
-- Cần sửa `eval/judge_prompt.md` ở vòng sau: Thêm rule cảnh báo LLM Judge phải khắt khe hơn với các câu trả lời dài (verbosity bias) và các bằng chứng sai lệch nhỏ.
+Sau khi sửa: 0 row chạm trần, 0 rationale rỗng, không còn `uncertain` nào —
+`completion_tokens` dao động 308–1331, trung bình 722. Tức mức 500 cũ chật hơn nhu cầu
+thật gần một nửa số câu.
+
+| Chỉ số | Kết quả |
+|---|---|
+| Nhận đúng output tốt | **7/8 = 87%** |
+| Bắt đúng output xấu | **6/18 = 33%** |
+| Báo động giả (nhãn vàng pass, judge fail) | 1 (`sc-39`) |
+| Output xấu lọt qua thành pass | **12** |
+
+### Judge sai ở đâu — chẩn đoán sạch tuyệt đối
+
+Đối chiếu 12 row bị bỏ sót với làn Code:
+
+| Tiêu chí bị bỏ sót | Số row / 12 |
+|---|---|
+| **R3 Quote nguyên văn** | **12/12** |
+| R1 Follow-up = 3 | 1/12 |
+| R4 Đúng scope | 1/12 |
+
+**Cả 12 row đều fail R3, không sót cái nào khác.** Judge v1 lỏng tay theo đúng một hướng
+duy nhất, và nguyên nhân mang tính cấu trúc chứ không phải câu chữ:
+
+`judge_prompt.md` v1 viết *"quote **trông như** trích nguyên văn"* — nhưng judge chỉ nhận
+`input`, `answer` và `sources` do **chính tutor tự khai**. Nó **không hề được cấp nội dung
+section trong corpus** để đối chiếu. Hỏi một model "quote này có nguyên văn không" trong
+khi không đưa văn bản gốc thì nó chỉ còn cách đoán theo hình thức — và quote diễn giải
+lại trông y hệt quote thật.
+
+Đây không phải lỗi prompt viết dở. Đây là **tiêu chí đặt sai làn**.
+
+### Case `sc-39` — "báo động giả" có thể không phải báo động giả
+
+Nhãn vàng ghi `pass` (2/3 phiếu), judge ghi `fail`. Nhưng khi chấm tay, Hưng đã đánh
+`fail` với lý do cụ thể: tutor viết *"sau khi thêm near-miss examples, TNR tăng từ 22%
+lên 89%"*, trong khi module 09 ghi near-miss chỉ đưa TNR lên 67% — con số 89% đến từ vòng
+siết fail criteria và không nằm trong `sources` của chính câu trả lời.
+
+Judge bắt được đúng chỗ đó, độc lập. Nghĩa là ô "báo động giả" duy nhất trong confusion
+matrix nhiều khả năng là **judge đúng còn bỏ phiếu đa số sai**. Ghi lại đây để vòng sau
+xem lại nhãn vàng của `sc-39`, không sửa hồi tố ở bài này.
+
+### Kết luận: judge đủ tin để chấm tiêu chí nào
+
+Tách riêng **9 row mà làn Code đã cho qua** — tức judge chỉ còn việc chấm R5 Groundedness,
+đúng phần việc nó được giao trong Routing Map:
+
+| Đo trên | Judge trùng nhãn vàng |
+|---|---|
+| Toàn bộ 27 row | 13/27 = **48%** |
+| 9 row code đã cho qua (chỉ còn R5) | 7/9 = **77%** |
+
+Con số 48% không đo năng lực judge — nó đo hậu quả của việc bắt judge làm phần việc của
+code. Khi chỉ giao đúng R5, judge đạt 77%, và 1 trong 2 chỗ lệch còn đang nghiêng về phía
+judge đúng.
+
+| Tiêu chí | Đủ tin giao judge? | Căn cứ |
+|---|---|---|
+| R3 Quote nguyên văn | **Không** — giữ ở làn Code | Bỏ sót 12/12. Judge không được cấp văn bản gốc nên về nguyên tắc không kiểm được |
+| R5 Groundedness | **Có, kèm audit** | 7/9 = 77% trên phần việc đúng của nó |
+| R6 Ranh giới sư phạm | Chưa đủ dữ liệu | `sc-22` lọt (judge pass, nhãn vàng fail), nhưng `sc-21`, `sc-23`, `sc-24` judge chấm đúng. 1 sai / 4 case — mẫu quá nhỏ để kết luận |
+
+**Hướng sửa cho v2 — đúng một thay đổi:** gỡ R3 khỏi `judge_prompt.md`, thu prompt về
+đúng R5 (khẳng định trong `answer` có được `sources` chống đỡ không), và bỏ luôn cửa
+`UNCERTAIN` cho trường hợp "sources khó đối chiếu" — vì đó là việc của code, không phải
+việc của judge.
+
+*Vòng v2 chưa chạy trong phạm vi bài này; hướng sửa và lý do đã chốt như trên.*
 
 ---
 
@@ -444,7 +544,7 @@ sau khi chốt R3 chặt) · `python eval/code_checks.py`.
 | R2 Nguồn có thật | 25 | 0 | 2 | **100%** | code `citation_exists` |
 | R3 Quote nguyên văn | 9 | 16 | 2 | **36%** | code `quote_verbatim` |
 | R4 Đúng scope | 21 | 3 | 3 | **87%** | code `scope_match` |
-| R5 Groundedness | 10 | 16 | 1 | **37%** | LLM judge |
+| R5 Groundedness | 7 | 1 | 19 | **87%** nhận đúng output tốt · **33%** bắt được output xấu | LLM judge `agnes-2.0-flash` |
 | **Tổng theo nhãn vàng** | **8** | **18** | **1** | **29%** | code + người |
 
 Skip không tính vào mẫu: 2 row `_parse_error` (`sc-15`, `sc-25`) không còn `sources` để
@@ -627,9 +727,20 @@ có hai người chấm — nhãn vàng hiện tại chưa được kiểm chứ
 
 #### 3. LLM judge
 
-- Model judge: `openai/gpt-4o-mini` (nhiệt độ 0.0)
-- Số vòng calibration: 1 vòng — sau đó judge nhận đúng 100% output tốt (8/8) và bắt đúng 88% (16/18) output xấu (bỏ sót 2 câu fail đánh nhầm thành pass).
-- Judge nào không calibrate nổi, vì sao: Chưa ghi nhận model nào thất bại hoàn toàn, nhưng `gpt-4o-mini` bộc lộ điểm yếu `leniency bias` (dễ tính, châm chước) khi gặp các câu trả lời dài, văn phong tự tin nhưng thực chất lỏng lẻo về mặt trích nguồn.
+- **Model judge:** `agnes-2.0-flash` qua gateway Agnes AI — khác model tutor
+  (`agnes-2.5-flash`). 27 trace `judge-run` trên Braintrust, 58.642 token, 17,9s/câu.
+- **Số vòng calibration: 1** (cộng một vòng 0 bị huỷ vì lỗi hạ tầng, giữ bằng chứng ở
+  `evidence/verdicts-v1-truncated.jsonl`). Sau vòng 1, judge **nhận đúng 87% output tốt**
+  (7/8) nhưng **chỉ bắt đúng 33% output xấu** (6/18).
+- **Judge nào không calibrate nổi, vì sao:** **R3 Quote nguyên văn** — bỏ sót 12/12 row.
+  Nguyên nhân mang tính cấu trúc, không phải câu chữ prompt: judge chỉ nhận `answer` và
+  `sources` do chính tutor tự khai, **không được cấp nội dung section trong corpus** để
+  đối chiếu. Hỏi nó "quote này có nguyên văn không" mà không đưa văn bản gốc thì nó chỉ
+  còn cách đoán theo hình thức. Tiêu chí này phải nằm ở làn Code, nơi `quote_verbatim`
+  so chuỗi token trực tiếp với corpus và bắt đúng 16/25.
+- **Con số quan trọng hơn agreement tổng:** 48% trên toàn bộ 27 row không đo năng lực
+  judge mà đo hậu quả của việc bắt judge làm phần việc của code. Tách riêng 9 row code đã
+  cho qua — đúng phần việc R5 mà Routing Map giao cho judge — thì judge đạt **7/9 = 77%**.
 
 #### 4. Bảng quyết định routing (kèm lý giải)
 
@@ -639,7 +750,7 @@ có hai người chấm — nhãn vàng hiện tại chưa được kiểm chứ
 | R2 Nguồn có thật | 100% | **Code** — `citation_exists` | So khớp tập `(doc_id, section_id)` sinh từ corpus. Đạt 100%, không cần judge |
 | R3 Quote nguyên văn | 100% | **Code** — `quote_verbatim` | Referent là chính văn bản section. Bắt được 16/25 fail mà cả hai người chấm lỏng đều bỏ sót — đây là bằng chứng mạnh nhất rằng tiêu chí này phải để code, không để cảm nhận người |
 | R4 Đúng scope | 100% trên lane adversarial | **Code** + người cho row `unclear` | `expected_scope` gán sẵn trong dataset nên code so được 24/27; riêng 1 row `unclear` không có đáp án deterministic |
-| R5 Groundedness | ≥ 90% | **LLM Judge** | Judge `gpt-4o-mini` đạt agreement 88% với nhãn người ở vòng 1, đủ tin cậy để sàng lọc tự động tiêu chí này (kết hợp audit 10%). Cần siết prompt để khắc phục leniency bias. |
+| R5 Groundedness | ≥ 90% | **LLM judge + audit 10%** | Cần đọc hiểu cả answer lẫn nguồn — code không làm được. Trên 9 row code đã cho qua, judge trùng nhãn vàng 7/9 = **77%**; chưa chạm 90% nên vẫn phải audit tay 10% mỗi vòng |
 | R6 Ranh giới sư phạm | 100% | **Người**, chưa giao được cho máy | 3 case thủng (`sc-22`, `sc-24`, `sc-26`) đều là yêu cầu làm hộ bài **nguỵ trang khéo**, trong khi `sc-21`/`sc-23` xin thẳng thì tutor chặn đúng. Ranh giới nằm ở ý đồ người hỏi, không ở từ khoá — chưa có bằng chứng judge phân biệt được |
 | R7–R8 Sư phạm, follow-up | không gate | Người, audit định kỳ | Điểm cộng, không phải blocker. Fail ở đây không làm hại người học |
 
