@@ -168,14 +168,11 @@ ghi rõ "[Loan sửa khi gộp]" để truy vết được về sau.
 > Rubric = định nghĩa "đủ tốt" mà cả team chấm giống nhau. Thu hẹp scope trước khi
 > viết tiêu chí.
 
-- Tutor trả lời một câu in-scope **"đủ tốt"** khi nào? Viết bằng 1–2 câu ai cũng hiểu.
-- Liệt kê các **tiêu chí chấm** (gợi ý: groundedness, citation đúng format, đúng scope,
-  chất lượng sư phạm, follow-up có giá trị...). Mỗi tiêu chí: pass/fail thế nào, ví dụ
-  pass, ví dụ fail.
-- Tiêu chí nào là **blocker** (fail là cả lượt fail)? Tiêu chí nào chỉ là "điểm cộng"?
-- Với câu out-of-scope, hành vi nào được coi là pass? (từ chối + gợi ý chủ đề liên quan?)
-- Bạn đã thử chấm chéo với ai chưa? Hai người chấm lệch nhau ở tiêu chí nào, sửa rubric
-  ra sao sau đó?
+- Tutor trả lời một câu in-scope **"đủ tốt"** khi nào? 
+  -> Khi tutor đưa ra câu trả lời trực tiếp, chính xác, bám sát hoàn toàn vào nội dung của `sources` được trích dẫn, và cung cấp nguồn hợp lệ (`doc_id` và `section_id` khớp với `manifest.json`).
+
+- Tiêu chí **blocker**: `Groundedness` (Không bịa đặt) và `Citation Formats` (Trích nguồn đúng định dạng). Nếu trích nguồn sai hoặc bịa đặt kiến thức, câu trả lời bị đánh Fail ngay lập tức vì sẽ gây hại cho người học.
+- Với câu out-of-scope, hành vi pass là: Nhận diện đúng đây là kiến thức ngoài lề, từ chối lịch sự, KHÔNG cố gắng trả lời và KHÔNG bịa ra nguồn giả.
 
 **Trả lời:**
 
@@ -248,13 +245,10 @@ nốt *một phần* bài tập, khó từ chối dứt khoát hơn xin trọn �
 > Cái gì kiểm bằng code, cái gì cần LLM judge, cái gì phải đến tay expert. Không phải
 > tiêu chí nào cũng cần LLM.
 
-- Với từng tiêu chí trong rubric (mục 3 ở trên): kiểm tra bằng **code** (deterministic), **LLM
-  judge**, hay **con người**? Vì sao?
-- Tiêu chí nào bạn ban đầu định cho LLM judge chấm nhưng hoá ra code kiểm được rẻ hơn
-  (ví dụ: output có parse được JSON không, sources có đủ doc_id hợp lệ không)?
-- Tiêu chí nào LLM judge **không tin được** và phải giữ cho con người?
-- Judge prompt của bạn (`eval/judge_prompt.md`) chấm tiêu chí nào? Nhiệt độ, model judge là
-  gì, vì sao chọn khác model của tutor?
+- **Code (Deterministic):** Dùng cho `Citation Correctness` (đảm bảo JSON hợp lệ, `doc_id` và `section_id` thực sự tồn tại trong `manifest.json`), và kiểm đếm số lượng follow-up questions.
+- **LLM Judge:** Dùng cho `Groundedness` và `Scope Accuracy` vì cần khả năng đối chiếu ngữ nghĩa giữa câu trả lời và source document. 
+- **Con người:** Dùng cho `Helpfulness` (đánh giá văn phong, độ thân thiện) và xử lý các ca near-miss tinh vi mà Judge không chắc chắn.
+- **Judge prompt:** Chấm tiêu chí **Groundedness & Scope**. Dùng `openai/gpt-4o-mini`, nhiệt độ = 0.0 để đảm bảo tính nhất quán (deterministic). Chọn khác model với Tutor (`deepseek-v4-flash`) để tránh hiện tượng *self-preference bias*.
 
 **Trả lời:**
 
