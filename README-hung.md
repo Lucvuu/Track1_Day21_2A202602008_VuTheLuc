@@ -1,13 +1,31 @@
-# Track 1 · Day 20–21 — AI Evaluation Capstone · Hưng
+# Track 1 · Day 20–21 — AI Evaluation Capstone
+
+## Thông tin cá nhân
+
+| | |
+|---|---|
+| **Họ tên** | Hoàng Tuấn Hưng |
+| **Mã học viên** | 2A202601911 |
+| **Track** | Track 1 · Day 20–21 — AI Evaluation |
+| **Vai trò trong nhóm** | Pipeline & Code — hạ tầng chạy eval, làn Code, Scorecard & Gate |
+
+## Nhóm Đường Bốn mùa xuân
+
+| Thành viên | Mã học viên | Vai trò trong bài lab này |
+|---|---|---|
+| Vũ Thế Lực | 2A202602008 | Cố vấn từ xa |
+| **Hoàng Tuấn Hưng** | **2A202601911** | **Pipeline & Code** |
+| Nguyễn Thị Nam Phương | 2A202601720 | Judge & Calibration |
+| Đỗ Thị Thanh Loan | 2A202601654 | Dataset & Rubric |
 
 **Case:** VLearn AI Tutor — trợ giảng trả lời câu hỏi học viên chỉ dựa trên corpus khoá
 học, output JSON `{scope, answer, sources, followup_questions}`.
 
-**Nhóm:** **Hưng** (Pipeline & Code) · Loan (Dataset & Rubric) · Phương (Judge & Calibration)
-
 **Bài nộp:** [`deliverables/REPORT.md`](deliverables/REPORT.md) — 7 mục theo phase ·
 [`deliverables/evidence/`](deliverables/evidence/) — data thô ·
-[`deliverables/ai-support-log-hung.md`](deliverables/ai-support-log-hung.md)
+[`ai-support-log.md`](ai-support-log.md)
+
+**Repo chung của nhóm:** https://github.com/tuanhugnVI/K3-Track1-Day20-21-AI-Evaluation
 
 ---
 
