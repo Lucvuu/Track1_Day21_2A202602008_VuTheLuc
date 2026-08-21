@@ -25,6 +25,19 @@ BRAINTRUST_PROJECT= ai-evaluation
 
 Key nằm trong `.env` ở root repo, đã gitignore, không commit.
 
+## Quyền truy cập
+
+Project thuộc org `FPT` nên **cần là thành viên org mới mở được**. Người ngoài mở link sẽ
+thấy *"This page is restricted or does not exist. Sign in to verify permissions."*
+
+Để người chấm xem được trace, chọn một trong hai:
+
+1. **Mời vào org** — Braintrust → Settings → Members → Invite, thêm email người chấm.
+2. **Dùng bản sao cục bộ** — [`trace-summary.md`](trace-summary.md) dựng lại đúng nội dung
+   từng trace (tool_calls, tokens, latency của cả `tutor-run` và `judge-run` hai vòng),
+   sinh bằng script từ `results-v1.jsonl` và `verdicts-v*.jsonl`. Dữ liệu gốc nằm trong
+   chính các file đó — Braintrust chỉ là bản trực quan hoá, không phải nguồn duy nhất.
+
 ## Ghi chú
 
 Project `ai-evaluation` do `braintrust.init_logger()` tự tạo ở lần log đầu tiên
