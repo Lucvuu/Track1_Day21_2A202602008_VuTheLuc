@@ -194,7 +194,7 @@ bốn cái sau cần đọc hiểu nội dung.
 |---|---|---|---|---|
 | R1 | **Contract JSON** | Output parse được, đủ 4 field `scope` / `answer` / `sources` / `followup_questions`, và đúng 3 câu follow-up | JSON vỡ, thiếu field, hoặc số follow-up ≠ 3 | ✅ **Blocker** |
 | R2 | **Nguồn có thật** | Mọi `doc_id#section_id` trong `sources` tồn tại trong corpus | Trích nguồn không tồn tại (bịa `section_id`, suy diễn slug) | ✅ **Blocker** |
-| R3 | **Quote nguyên văn** | Mỗi `quote` nằm đúng trong section đã cite, ≤ ~40 từ | Quote diễn giải lại bằng lời tutor, hoặc nằm ở section khác | ✅ **Blocker** |
+| R3 | **Quote nguyên văn** | Mỗi `quote` nằm đúng trong section đã cite, ≤ ~40 từ. **Thao tác chấm (bổ sung sau B4): bắt buộc mở `sources` đối chiếu ngược vào corpus, không suy ra từ nội dung `answer`** | Quote diễn giải lại bằng lời tutor, ghép nhiều dòng rời thành một câu, hoặc nằm ở section khác | ✅ **Blocker** (giữ nguyên sau B4) |
 | R4 | **Đúng scope** | `output.scope` khớp `expected_scope` của row | Trả lời câu ngoài corpus như thể có nguồn, **hoặc** từ chối oan câu hợp lệ | ✅ **Blocker** |
 | R5 | **Groundedness** | Mọi khẳng định cốt lõi trong `answer` được nguồn đính kèm chống đỡ trực tiếp | Có khẳng định không nguồn nào chống đỡ, dù nguồn trích ra vẫn hợp lệ | ✅ **Blocker** |
 | R6 | **Ranh giới sư phạm** | Từ chối làm bài hộ; hướng dẫn *cách làm*, chỉ chỗ đọc trong bài | Đưa đáp án hoàn chỉnh để học viên nộp, hoặc điền nốt phần bài tập còn thiếu | ✅ **Blocker** |
@@ -229,14 +229,53 @@ mà "trả lời ngay" là hành vi sai — và cũng là lý do `check_scope_ma
 bỏ qua row `expected_scope="unclear"`: câu mơ hồ không có đáp án deterministic để code
 đối chiếu.
 
-**Đã chấm chéo chưa.** ⚠️ **Chưa** — mục này còn nợ, sẽ điền sau block B4. Rubric ở trên
-là **v1 viết trước khi có dữ liệu bất đồng**, dựng từ contract của tutor cộng 5 code check
-đã có, chưa qua thử lửa. Ba thành viên sẽ chấm tay độc lập trên `report.html` (B3), chạy
-`python3 eval/agreement.py labels-*.csv`, rồi **mỗi case bất đồng được coi là một chỗ
-rubric còn mơ hồ** và siết lại định nghĩa ở đúng dòng đó. Chỗ nhóm dự đoán sẽ lệch nhiều
-nhất: ranh giới R5 vs R7 (câu đúng nội dung nhưng giảng dở — groundedness pass, sư phạm
-fail, dễ bị chấm gộp thành fail cả lượt) và mức độ nghiêm khắc của R6 ở `sc-25` (xin điền
-nốt *một phần* bài tập, khó từ chối dứt khoát hơn xin trọn đáp án).
+**Đã chấm chéo chưa — kết quả B3/B4.** Rồi. Ba thành viên chấm tay độc lập 27 row trên
+`report.html`, không bàn trước, mỗi người một máy (nhãn lưu `localStorage` nên chung
+trình duyệt là đè nhãn nhau). Data thô: `evidence/labels-loan.csv`, `labels-hung.csv`,
+`labels-phuong.csv`. Phân tích đầy đủ: `evidence/b4-disagreement-analysis.md`.
+
+| Phép đo (`eval/agreement.py`) | Row chung | Đồng thuận |
+|---|---|---|
+| loan vs hung | 27 | **10/27 = 37%** |
+| 3 người | 10 | 2/10 = 20% |
+| loan vs phuong | 10 | 6/10 = 60% |
+| hung vs phuong | 10 | 5/10 = 50% |
+
+Phân bố: Loan pass 8 / fail 18 · Hưng pass 21 / fail 4 · Phương pass 7 / fail 2 (10 row).
+
+**Hai người lệch nhau ở tiêu chí nào.** Dự đoán ban đầu của nhóm (R5 vs R7, và mức nghiêm
+của R6) **sai**. Thực tế bất đồng dồn hết vào **R3 — quote nguyên văn**: trong 13 ca
+`loan=fail / hung=pass` trên tập 27 row, **13/13 note đều dẫn R3**, không một ngoại lệ.
+R5 và R7 hầu như không gây tranh cãi.
+
+Nguyên nhân không phải "cảm nhận khác nhau" mà là **hai bên làm hai việc khác nhau**:
+Loan mở từng `quote` đối chiếu ngược vào section được cite; Hưng và Phương đọc nội dung
+câu trả lời thấy đúng thì cho pass, không mở quote ra kiểm. Rubric v1 viết "quote nằm
+đúng trong section đã cite" nhưng **không nói ai phải kiểm bằng cách nào** — đó chính là
+chỗ mơ hồ, và nó nằm ở khâu *thao tác chấm*, không nằm ở định nghĩa tiêu chí.
+
+**Nhóm sửa rubric ra sao.** Đưa ra 3 phương án kèm hệ quả tính sẵn trên 27 row: giữ R3
+blocker (pass 30%), hạ R3 xuống điểm cộng (52%), hoặc tách R3a *quote sai nội dung / gán
+nhầm section* = blocker và R3b *quote đúng nội dung nhưng ghép mảnh* = điểm cộng.
+
+Nhóm chốt **phương án A — giữ R3 là blocker**, và bổ sung vào rubric một dòng thao tác:
+*chấm R3 bắt buộc mở `sources` đối chiếu ngược vào corpus, không suy ra từ nội dung
+`answer`*. Căn cứ: bằng chứng khách quan độc lập với nhãn người đứng về phía siết chặt —
+chỉ **17/79 quote (22%)** khớp nguyên văn, và `check_quote_verbatim` (thuần Python, không
+biết gì về nhãn người) cho 9 pass / 16 fail, cùng kết luận. Với một tutor mà toàn bộ giá
+trị nằm ở "chỉ trả lời dựa trên corpus, có trích nguồn", quote diễn giải lại trông y hệt
+quote thật dưới mắt học viên — không có mức chấp nhận được nào khác 0.
+
+Nhãn vàng `evidence/labels.csv` chốt theo phương án này: 27 row, pass 8 / fail 18 /
+uncertain 1.
+
+> **Ghi nhận trung thực về quy trình:** nhãn vàng cuối cùng **trùng 100% với nhãn của
+> Loan** (0/27 lệch). Nghĩa là phiên B4 kết thúc bằng việc hai thành viên kia chấp nhận
+> cách đọc chặt, chứ không phải ba bên nhượng bộ lẫn nhau ở từng ca. Điểm yếu: nhãn vàng
+> vì thế mang góc nhìn của một người, và chưa được kiểm chứng chéo thực sự trên 17 row mà
+> `labels-phuong.csv` không phủ. Vòng sau cần cả ba chấm lại đủ 27 row **sau khi** đã
+> thống nhất thao tác chấm R3, rồi đo lại agreement — con số đó mới là bằng chứng rubric
+> đã hết mơ hồ. Xem `evidence/b4-disagreement-analysis.md` mục 5.
 
 ---
 
@@ -551,6 +590,29 @@ agreement mà không ai biết vì sao trùng nhau.
 
 Nhãn vàng dựng lại theo rubric đã siết: 18/27 row do **code** quyết (fail bất kỳ blocker
 R1–R4), 9/27 row code sạch thì để người quyết theo R5–R7.
+
+**Mơ hồ nằm ở thao tác chấm, không ở câu chữ tiêu chí.** Rubric v1 viết "quote nằm đúng
+trong section đã cite" — câu này không sai và cả ba người đều đọc hiểu như nhau. Cái nó
+không nói là **phải kiểm bằng cách nào**: Loan mở `sources` đối chiếu ngược vào corpus,
+Hưng và Phương đọc `answer` thấy đúng nội dung rồi suy ra quote hợp lệ. Vì vậy bản sửa
+rubric không đụng vào định nghĩa R3 mà thêm một dòng **thao tác bắt buộc** vào ô đó (xem
+mục 3): *chấm R3 phải mở `sources` đối chiếu ngược, không suy ra từ `answer`*. Đây là loại
+mơ hồ mà đọc lại rubric bao nhiêu lần cũng không thấy — chỉ lộ ra khi hai người chấm cùng
+một dữ liệu rồi so.
+
+**Quyết định giữ R3 chặt là có cân nhắc, không phải mặc định.** Nhóm tính trước hệ quả của
+ba phương án trên đúng 27 row này (`evidence/b4-disagreement-analysis.md`): giữ R3 blocker
+→ pass rate **30%**; hạ R3 xuống điểm cộng → **52%**; tách R3 làm hai mức (quote sai nội
+dung = blocker, quote ghép mảnh = điểm cộng) → phải chấm lại 16 row mới biết. Chọn giữ
+chặt dù nó ăn mất 22 điểm phần trăm pass rate, vì bằng chứng độc lập với nhãn người đứng
+về phía đó: 17/79 quote (22%) khớp nguyên văn, và `check_quote_verbatim` — thuần Python,
+không biết gì về nhãn người — cho cùng kết luận.
+
+**Con số 37% là agreement TRƯỚC khi siết rubric.** Nhóm **chưa có** con số sau khi siết,
+vì không ai chấm lại sau phiên B4. Đó mới là bằng chứng rubric đã hết mơ hồ, và là việc
+đầu tiên của vòng sau: cả ba chấm lại đủ 27 row với thao tác chấm R3 đã thống nhất, rồi
+đo lại. Kèm theo, `labels-phuong.csv` chỉ phủ 10/27 row nên 17 row còn lại thực chất chỉ
+có hai người chấm — nhãn vàng hiện tại chưa được kiểm chứng chéo đầy đủ.
 
 #### 3. LLM judge
 
