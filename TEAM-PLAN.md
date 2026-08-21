@@ -1,7 +1,7 @@
 # TEAM PLAN — Capstone AI Evaluation (K3 Track 1 · Day 20–21)
 
 **Case:** VLearn AI Tutor · **Repo:** `K3-Track1-Day20-21-AI-Evaluation/`
-**Team:** Hưng · Loan · Phương
+**Team:** Hưng · Loan · Phương · Lực
 
 ---
 
