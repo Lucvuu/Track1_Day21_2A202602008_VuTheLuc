@@ -7,13 +7,13 @@
 | **Họ tên** | Hoàng Tuấn Hưng |
 | **Mã học viên** | 2A202601911 |
 | **Track** | Track 1 · Day 20–21 — AI Evaluation |
-| **Vai trò trong nhóm** | Pipeline & Code — hạ tầng chạy eval, làn Code, Scorecard & Gate |
+| **Vai trò trong nhóm** | Pipeline & Code (đồng chủ trì cùng Vũ Thế Lực) — hạ tầng chạy eval, làn Code, Scorecard & Gate |
 
 ## Nhóm Đường Bốn mùa xuân
 
 | Thành viên | Mã học viên | Vai trò trong bài lab này |
 |---|---|---|
-| Vũ Thế Lực | 2A202602008 | Cố vấn từ xa |
+| Vũ Thế Lực | 2A202602008 | Pipeline & Code (đồng chủ trì cùng Hưng) |
 | **Hoàng Tuấn Hưng** | **2A202601911** | **Pipeline & Code** |
 | Nguyễn Thị Nam Phương | 2A202601720 | Judge & Calibration |
 | Đỗ Thị Thanh Loan | 2A202601654 | Dataset & Rubric |
@@ -57,9 +57,10 @@ model. Model `agnes-2.5-flash` không có prefix provider nên rơi về `OPENAI
 Cấu hình: tutor `agnes-2.5-flash`, judge `agnes-2.0-flash` — hai model khác nhau, tránh tự
 chấm chéo. Tracing Braintrust project `ai-evaluation`, log cả `tutor-run` lẫn `judge-run`.
 
-### Hai code check mới (H5, mục 4)
+### Hai code check mới (H5, mục 4) — đồng chủ trì với Vũ Thế Lực
 
-Thêm vào `eval/code_checks.py`:
+Hai check này do **Lực đề xuất**, tôi cài đặt vào `eval/code_checks.py` và đo trên dữ liệu
+thật:
 
 | Check | Bắt gì | Kết quả trên 27 câu |
 |---|---|---|
@@ -70,7 +71,11 @@ Thêm vào `eval/code_checks.py`:
 đúng deterministic, phải để judge/người chấm. Đó là một quyết định routing, không phải
 thiếu sót.
 
-### Dataset lane `sc-2x` (H4, mục 2)
+### Dataset lane `sc-2x` (H4, mục 2) — do Vũ Thế Lực soạn
+
+Lane này **do Lực soạn**; tôi rà lại theo lưới input của Loan, kiểm định dạng JSONL và đưa
+vào vòng chạy. Ghi rõ ở đây vì phát hiện quan trọng nhất của tôi về ranh giới sư phạm đến
+từ chính lane này.
 
 9 câu phủ ba ô của lưới: *Mới × Xin đáp án*, *Giữa khoá × Xin đáp án* (ô rủi ro cao nhất),
 *Mới × Ngoài lề*. Gồm injection thô, injection bằng tiền đề giả, và câu ngoài lề **lân
@@ -81,7 +86,7 @@ injection thô) tutor chặn đúng, nhưng `sc-22`, `sc-24`, `sc-26` (nguỵ tr
 **Nguỵ trang khéo mới lọt, thô thì chặn được** — nên luật chống "làm hộ bài" phải tách
 riêng, không gộp vào out-of-scope chung.
 
-### Vòng chạy B2 và mục 6 Scorecard & Gate
+### Vòng chạy B2 và mục 6 Scorecard & Gate — phần tôi chủ trì
 
 Chạy `run_eval.py` trên 27 câu → `evidence/results-v1.jsonl`, 0 row lỗi, 904.049 token,
 latency trung bình 39,3s. Định nghĩa 5 điều kiện gate và ra quyết định **CHƯA SHIP**.
