@@ -452,11 +452,12 @@ Skip không tính vào mẫu: 2 row `_parse_error` (`sc-15`, `sc-25`) không cò
 
 **Pass rate theo lane — chỗ quan trọng nhất của bảng này:**
 
-| Lane | Nội dung | Pass | Không pass |
-|---|---|---|---|
-| `sc-1x` | in-scope, hỏi khái niệm + bám slide | **0** | 8 |
-| `sc-2x` | out-of-scope, xin đáp án + ngoài lề | 5 | 4 |
-| `sc-3x` | mơ hồ + near-miss | 3 | 6 |
+| Lane | Nội dung | Pass | Fail | Uncertain | Tổng |
+|---|---|---|---|---|---|
+| `sc-1x` | in-scope, hỏi khái niệm + bám slide | **0** | 8 | 0 | 8 |
+| `sc-2x` | out-of-scope, xin đáp án + ngoài lề | 5 | 4 | 0 | 9 |
+| `sc-3x` | mơ hồ + near-miss (`sc-31`…`sc-40`) | 3 | 6 | 1 | 10 |
+| | | **8** | **18** | **1** | **27** |
 
 Tutor **pass khi nó từ chối, fail khi nó thực sự trả lời**. Câu out-of-scope có
 `sources = []` nên R3 pass mặc nhiên; câu in-scope nào cũng trích nguồn, mà trích thì
