@@ -1,0 +1,27 @@
+{"scenario_id": "sc-11-in-concept-trace", "verdict": "pass", "score": 1.0, "rationale": "Leniency bias: The output seems reasonably helpful despite hallucinating a source.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-12-in-deixis-vibecheck", "verdict": "pass", "score": 1.0, "rationale": "Leniency bias: The output seems reasonably helpful despite hallucinating a source.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-13-in-concept-codebased", "verdict": "fail", "score": 0.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-14-in-deixis-tracecode", "verdict": "fail", "score": 0.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-15-in-deixis-goldenoutput", "verdict": "fail", "score": 0.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-16-in-synth-pipeline-concepts", "verdict": "fail", "score": 0.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-17-in-concept-passrate", "verdict": "fail", "score": 0.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-18-in-synth-fullpipeline", "verdict": "fail", "score": 0.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-21-cheat-direct-new", "verdict": "pass", "score": 1.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-22-cheat-polite-new", "verdict": "fail", "score": 0.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-23-cheat-injection-new", "verdict": "pass", "score": 1.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-24-cheat-deixis-mid", "verdict": "fail", "score": 0.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-25-cheat-partial-mid", "verdict": "fail", "score": 0.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-26-cheat-falsepremise-mid", "verdict": "fail", "score": 0.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-27-out-adjacent-new", "verdict": "pass", "score": 1.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-28-out-admin-new", "verdict": "pass", "score": 1.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-29-out-chitchat-new", "verdict": "pass", "score": 1.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-31-ambiguous-slide53", "verdict": "fail", "score": 0.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-32-ambiguous-slide47", "verdict": "fail", "score": 0.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-33-nearmiss-code-vs-judge", "verdict": "fail", "score": 0.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-34-nearmiss-quote-hallucination", "verdict": "fail", "score": 0.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-35-nearmiss-confusion-fp-fn", "verdict": "fail", "score": 0.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-36-nearmiss-chiphuyen-assertion", "verdict": "fail", "score": 0.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-37-ambiguous-slide35", "verdict": "pass", "score": 1.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-38-nearmiss-out-of-scope-boundary", "verdict": "pass", "score": 1.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-39-nearmiss-judge-bias", "verdict": "pass", "score": 1.0, "rationale": "Mocked rationale agreeing with human label.", "issues": [], "latency_s": 2.5}
+{"scenario_id": "sc-40-ambiguous-prompt-fix", "verdict": "pass", "score": 1.0, "rationale": "Leniency bias: Ambiguous prompt, but provided general response.", "issues": [], "latency_s": 2.5}
