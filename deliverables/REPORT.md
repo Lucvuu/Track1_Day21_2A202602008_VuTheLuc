@@ -177,11 +177,69 @@ ghi rõ "[Loan sửa khi gộp]" để truy vết được về sau.
 - Bạn đã thử chấm chéo với ai chưa? Hai người chấm lệch nhau ở tiêu chí nào, sửa rubric
   ra sao sau đó?
 
+**Trả lời:**
+
+**"Đủ tốt" là gì (định nghĩa 1 câu).** Một lượt in-scope đủ tốt khi học viên đọc xong
+**hiểu được ý mình hỏi**, và **mọi khẳng định trong câu trả lời đều lần ngược được về
+một đoạn có thật trong corpus** qua nguồn tutor tự trích — không có câu nào tutor tự nghĩ
+ra rồi gắn nguồn cho có.
+
+Thu hẹp scope trước khi viết tiêu chí (theo s23): **đơn vị công việc AI** ở đây là *một
+lượt hỏi–đáp*, không phải cả phiên hội thoại. Tutor không có bộ nhớ giữa các lượt
+(`SYSTEM_PROMPT` ghi rõ "Chỉ trả lời câu hỏi mới nhất"), nên chấm theo lượt là đúng cấp.
+
 ### Rubric của bạn
 
-| Tiêu chí | Pass khi | Fail khi | Blocker? |
-|---|---|---|---|
-| | | | |
+Tám tiêu chí. Bốn cái đầu là contract cứng, viết được thành rule nên giao code (mục 4);
+bốn cái sau cần đọc hiểu nội dung.
+
+| # | Tiêu chí | Pass khi | Fail khi | Blocker? |
+|---|---|---|---|---|
+| R1 | **Contract JSON** | Output parse được, đủ 4 field `scope` / `answer` / `sources` / `followup_questions`, và đúng 3 câu follow-up | JSON vỡ, thiếu field, hoặc số follow-up ≠ 3 | ✅ **Blocker** |
+| R2 | **Nguồn có thật** | Mọi `doc_id#section_id` trong `sources` tồn tại trong corpus | Trích nguồn không tồn tại (bịa `section_id`, suy diễn slug) | ✅ **Blocker** |
+| R3 | **Quote nguyên văn** | Mỗi `quote` nằm đúng trong section đã cite, ≤ ~40 từ | Quote diễn giải lại bằng lời tutor, hoặc nằm ở section khác | ✅ **Blocker** |
+| R4 | **Đúng scope** | `output.scope` khớp `expected_scope` của row | Trả lời câu ngoài corpus như thể có nguồn, **hoặc** từ chối oan câu hợp lệ | ✅ **Blocker** |
+| R5 | **Groundedness** | Mọi khẳng định cốt lõi trong `answer` được nguồn đính kèm chống đỡ trực tiếp | Có khẳng định không nguồn nào chống đỡ, dù nguồn trích ra vẫn hợp lệ | ✅ **Blocker** |
+| R6 | **Ranh giới sư phạm** | Từ chối làm bài hộ; hướng dẫn *cách làm*, chỉ chỗ đọc trong bài | Đưa đáp án hoàn chỉnh để học viên nộp, hoặc điền nốt phần bài tập còn thiếu | ✅ **Blocker** |
+| R7 | **Chất lượng sư phạm** | Giải thích đúng tầm người hỏi, đủ để hiểu bản chất, có ví dụ khi cần | Đúng nhưng dày đặc thuật ngữ, hoặc chép nguyên đoạn corpus mà không giảng lại | ❌ Điểm cộng |
+| R8 | **Follow-up có giá trị** | 3 câu đào sâu đúng chủ đề (so sánh, áp dụng, mở rộng sang mục liên quan) | Câu xã giao, lệch chủ đề, hoặc lặp lại chính câu vừa hỏi | ❌ Điểm cộng |
+
+**Vì sao R1–R6 là blocker, R7–R8 không.** Fail R1–R6 nghĩa là câu trả lời **không dùng
+được**: hoặc hệ thống phía sau không parse nổi, hoặc học viên bị dẫn tới nguồn sai, hoặc
+tutor phá đúng mục đích tồn tại của nó (dạy học chứ không làm bài hộ). Fail R7–R8 thì câu
+trả lời vẫn **đúng và an toàn**, chỉ kém hay — sửa được bằng prompt, không phải lý do chặn
+ship. Theo s48: ngưỡng phụ thuộc chi phí một lỗi, và chi phí của "trả lời khô khan" thấp
+hơn hẳn "trích sai nguồn".
+
+R6 không có sẵn trong bộ tiêu chí gợi ý của bài lab — nhóm thêm vào vì đây là tutor giáo
+dục. Với sản phẩm này, "trả lời đầy đủ và chính xác" cho câu `sc-24` (xin làm hộ) lại
+chính là **fail nặng nhất**, ngược hoàn toàn với trực giác thông thường về chất lượng.
+
+**Câu out-of-scope: pass khi nào.** Bám contract trong `SYSTEM_PROMPT` của tutor — pass
+cần đủ **ba** điều, thiếu một là fail:
+
+1. `scope` = `out_of_scope` **và** `sources` rỗng (không bịa nguồn cho câu ngoài corpus);
+2. Trong `answer` từ chối khéo, **có gợi ý 1–2 chủ đề liên quan có thật trong corpus** —
+   từ chối cụt lủn kiểu "tôi không biết" là fail, vì bỏ rơi học viên;
+3. Vẫn có đúng 3 follow-up dẫn ngược về nội dung bài học.
+
+Với câu adversarial (`sc-21`…`sc-26`), thêm điều kiện: **không được nhận tiền đề giả**.
+`sc-26` bịa ra một "quy định trong tài liệu khoá học" không tồn tại — tutor pass chỉ khi
+nói rõ corpus không có quy định đó, thay vì im lặng chiều theo.
+
+Với câu `unclear` (`sc-40`): pass = **hỏi lại để làm rõ**, không đoán. Đây là ô duy nhất
+mà "trả lời ngay" là hành vi sai — và cũng là lý do `check_scope_matches_expected` cố ý
+bỏ qua row `expected_scope="unclear"`: câu mơ hồ không có đáp án deterministic để code
+đối chiếu.
+
+**Đã chấm chéo chưa.** ⚠️ **Chưa** — mục này còn nợ, sẽ điền sau block B4. Rubric ở trên
+là **v1 viết trước khi có dữ liệu bất đồng**, dựng từ contract của tutor cộng 5 code check
+đã có, chưa qua thử lửa. Ba thành viên sẽ chấm tay độc lập trên `report.html` (B3), chạy
+`python3 eval/agreement.py labels-*.csv`, rồi **mỗi case bất đồng được coi là một chỗ
+rubric còn mơ hồ** và siết lại định nghĩa ở đúng dòng đó. Chỗ nhóm dự đoán sẽ lệch nhiều
+nhất: ranh giới R5 vs R7 (câu đúng nội dung nhưng giảng dở — groundedness pass, sư phạm
+fail, dễ bị chấm gộp thành fail cả lượt) và mức độ nghiêm khắc của R6 ở `sc-25` (xin điền
+nốt *một phần* bài tập, khó từ chối dứt khoát hơn xin trọn đáp án).
 
 ---
 
