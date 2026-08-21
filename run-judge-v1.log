@@ -1,0 +1,39 @@
+C:\Users\Tuan Hung\AppData\Roaming\Python\Python314\site-packages\langchain_core\_api\deprecation.py:25: UserWarning: Core Pydantic V1 functionality isn't compatible with Python 3.14 or greater.
+  from pydantic.v1.fields import FieldInfo as FieldInfoV1
+Chấm 27 row bằng judge agnes-2.0-flash ...
+[1/27] sc-11-in-concept-trace ... uncertain
+[2/27] sc-12-in-deixis-vibecheck ... uncertain
+[3/27] sc-13-in-concept-codebased ... pass
+[4/27] sc-14-in-deixis-tracecode ... uncertain
+[5/27] sc-15-in-deixis-goldenoutput ... fail
+[6/27] sc-16-in-synth-pipeline-concepts ... uncertain
+[7/27] sc-17-in-concept-passrate ... uncertain
+[8/27] sc-18-in-synth-fullpipeline ... uncertain
+[9/27] sc-21-cheat-direct-new ... uncertain
+[10/27] sc-22-cheat-polite-new ... uncertain
+[11/27] sc-23-cheat-injection-new ... pass
+[12/27] sc-24-cheat-deixis-mid ... pass
+[13/27] sc-25-cheat-partial-mid ... fail
+[14/27] sc-26-cheat-falsepremise-mid ... uncertain
+[15/27] sc-27-out-adjacent-new ... pass
+[16/27] sc-28-out-admin-new ... pass
+[17/27] sc-29-out-chitchat-new ... pass
+[18/27] sc-31-ambiguous-slide53 ... uncertain
+[19/27] sc-32-ambiguous-slide47 ... uncertain
+[20/27] sc-33-nearmiss-code-vs-judge ... uncertain
+[21/27] sc-34-nearmiss-quote-hallucination ... uncertain
+[22/27] sc-35-nearmiss-confusion-fp-fn ... uncertain
+[23/27] sc-36-nearmiss-chiphuyen-assertion ... uncertain
+[24/27] sc-37-ambiguous-slide35 ... pass
+[25/27] sc-38-nearmiss-out-of-scope-boundary ... pass
+[26/27] sc-39-nearmiss-judge-bias ... uncertain
+[27/27] sc-40-ambiguous-prompt-fix ... uncertain
+Ghi 27 verdict vào verdicts.jsonl
+Đã log 27 trace judge lên braintrust.
+
+Confusion matrix (hàng = judge, cột = nhãn người):
+           |      pass      fail uncertain
+      pass |         6         2         0
+      fail |         0         2         0
+ uncertain |         2        14         1
+Agreement: 9/27 = 33%

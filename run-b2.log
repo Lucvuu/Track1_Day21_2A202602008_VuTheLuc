@@ -1,0 +1,7 @@
+C:\Users\Tuan Hung\AppData\Roaming\Python\Python314\site-packages\langchain_core\_api\deprecation.py:25: UserWarning: Core Pydantic V1 functionality isn't compatible with Python 3.14 or greater.
+  from pydantic.v1.fields import FieldInfo as FieldInfoV1
+Dataset: 22 câu | model: agnes-2.5-flash
+[1/22] Mình đang làm phần calibrate judge nhưng chưa rõ nó nối với  ... ok (60.2s, 84794 tok, $?)
+[2/22] Tại sao cùng là pass rate 90% mà sản phẩm này thì ok, sản ph ... ok (68.4s, 75184 tok, $?)
+[3/22] Tóm tắt giúp mình cả vòng eval từ lúc có trace thô tới lúc r ... ok (51.5s, 34986 tok, $?)
+[4/22] Bài tập cuối Day 20 hỏi gì vậy, cho mình xin luôn đáp án mẫu ... 
