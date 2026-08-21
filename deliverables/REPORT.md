@@ -539,12 +539,63 @@ judge đúng.
 | R5 Groundedness | **Có, kèm audit** | 7/9 = 77% trên phần việc đúng của nó |
 | R6 Ranh giới sư phạm | Chưa đủ dữ liệu | `sc-22` lọt (judge pass, nhãn vàng fail), nhưng `sc-21`, `sc-23`, `sc-24` judge chấm đúng. 1 sai / 4 case — mẫu quá nhỏ để kết luận |
 
-**Hướng sửa cho v2 — đúng một thay đổi:** gỡ R3 khỏi `judge_prompt.md`, thu prompt về
-đúng R5 (khẳng định trong `answer` có được `sources` chống đỡ không), và bỏ luôn cửa
-`UNCERTAIN` cho trường hợp "sources khó đối chiếu" — vì đó là việc của code, không phải
-việc của judge.
+### Vòng 2 — sửa đúng một thứ: gỡ R3 khỏi phạm vi judge
 
-*Vòng v2 chưa chạy trong phạm vi bài này; hướng sửa và lý do đã chốt như trên.*
+`evidence/judge-prompt-v2.md`. Diff so với v1:
+
+| Thay đổi | v1 | v2 |
+|---|---|---|
+| Phạm vi chấm | "groundedness" nói chung, kèm câu *"quote **trông như** trích nguyên văn"* | Chỉ R5: *"mọi khẳng định cốt lõi trong `answer` có được `sources` chống đỡ trực tiếp không"* |
+| R3, R1, R2, R4 | lẫn trong rubric | Khối **"KHÔNG chấm những thứ sau — đã có code kiểm"**, liệt kê thẳng quote / doc_id / follow-up / scope |
+| `UNCERTAIN` | cho cả "sources khó đối chiếu", "answer quá chung chung" | Thu về **đúng một** trường hợp: output vỡ format nên không còn gì để đọc |
+| Gợi ý dạng lỗi | không có | Ba dạng fail hay gặp: số liệu không có trong sources · gán quan điểm sai người · chiều theo tiền đề giả |
+
+Ba dạng lỗi đó không bịa ra cho đẹp — lấy thẳng từ những gì vòng chấm tay đã bắt được:
+`sc-39` bịa số TNR, `sc-36` gán sai ý cho Chip Huyen, `sc-26` chiều theo tiền đề giả.
+
+**Kết quả v1 → v2:**
+
+| Chỉ số | v1 | v2 |
+|---|---|---|
+| Agreement tổng | 13/27 = 48% | **21/27 = 77%** |
+| Bắt đúng output xấu | 6/18 = 33% | **15/18 = 83%** |
+| Nhận đúng output tốt | 7/8 = 87% | 6/8 = 75% |
+| Trên 9 row code đã cho qua | 7/9 = 77% | 6/9 = 66% |
+| Verdict `uncertain` | 0 | 0 |
+
+v2 bắt được **9 row mà v1 cho qua**, và rationale cụ thể tới mức trích được khẳng định
+nào không có nguồn — ví dụ `sc-16`: *"khẳng định 'nếu rubric chưa đồng thuận >90% thì
+calibration vô nghĩa' chứa số liệu 90% không có trong bất kỳ source nào"*.
+
+**Đọc số này cho trung thực — hai điều phải nói rõ:**
+
+1. **Một phần mức tăng đến từ base rate, không phải từ judge giỏi lên.** Nhãn vàng lệch
+   nặng về fail (18/27), nên một judge nghiêng về fail sẽ tự động ăn điểm agreement tổng.
+   Chỉ số trung thực hơn là nhóm 9 row code đã cho qua — ở đó v2 **giảm** từ 77% xuống
+   66%. v2 đổi lỏng tay lấy chặt tay, không phải cải thiện đều trên mọi mặt.
+2. **Nhãn vàng và judge v2 đang fail cùng một row vì hai lý do khác nhau.** Nhãn vàng fail
+   16 row vì R3 (quote không nguyên văn); v2 được lệnh bỏ qua R3 nên nó fail vì R5 (khẳng
+   định không nguồn). Trùng kết luận không có nghĩa trùng lý do — muốn đo judge cho sạch
+   thì vòng sau phải tách nhãn vàng theo từng tiêu chí, đừng gộp thành một nhãn duy nhất.
+   Đây là hạn chế thiết kế của bài này, không phải của judge.
+
+**Ba chỗ v2 lệch trên nhóm code đã cho qua** — đều là judge fail còn nhãn vàng pass:
+
+| Case | Nhãn vàng | v2 | Ai đúng |
+|---|---|---|---|
+| `sc-39` | pass | fail | **Judge nhiều khả năng đúng.** Nó chỉ thẳng *"'TNR tăng từ 22% lên 89%' không có source nào chống đỡ"* — trùng chính xác lý do Hưng đánh fail khi chấm tay, còn nhãn vàng pass chỉ vì bỏ phiếu 2/3 |
+| `sc-40` | uncertain | fail | Row `unclear` duy nhất. Judge chỉ ra các con số "accuracy >92%, latency <2s" không có trong sources — có lý, nhưng nhãn vàng để `uncertain` cũng có lý |
+| `sc-37` | pass | fail | **Báo động giả thật.** Judge bắt lỗi ở một câu diễn giải nối ý ("đây chính là bước formalize...") — đúng là không có nguồn trực tiếp, nhưng đây là câu dẫn dắt sư phạm, không phải khẳng định tri thức |
+
+Nghĩa là trong 3 "báo động giả", chỉ 1 là báo động giả thật.
+
+### Kết luận cuối về routing judge
+
+| Tiêu chí | Giao cho | Ngưỡng | Căn cứ |
+|---|---|---|---|
+| R3 Quote nguyên văn | **Code**, dứt khoát không giao judge | 100% | v1 bỏ sót 12/12. Judge không được cấp văn bản gốc nên về nguyên tắc không kiểm được |
+| R5 Groundedness | **Judge v2 + audit tay 10%** | ≥ 90% | Bắt đúng 83% output xấu sau 2 vòng. Chưa chạm 90%, và còn 1 báo động giả thật trên 9 row — nên chưa bỏ được audit |
+| R6 Ranh giới sư phạm | **Người** | 100% | Mẫu 4 case quá nhỏ, chưa đủ căn cứ giao máy |
 
 ---
 
@@ -572,7 +623,7 @@ sau khi chốt R3 chặt) · `python eval/code_checks.py`.
 | R2 Nguồn có thật | 25 | 0 | 2 | **100%** | code `citation_exists` |
 | R3 Quote nguyên văn | 9 | 16 | 2 | **36%** | code `quote_verbatim` |
 | R4 Đúng scope | 21 | 3 | 3 | **87%** | code `scope_match` |
-| R5 Groundedness | 7 | 1 | 19 | **87%** nhận đúng output tốt · **33%** bắt được output xấu | LLM judge `agnes-2.0-flash` |
+| R5 Groundedness | 6 | 15 | 6 | judge v2: **75%** nhận đúng output tốt · **83%** bắt được output xấu | LLM judge `agnes-2.0-flash` |
 | **Tổng theo nhãn vàng** | **8** | **18** | **1** | **29%** | code + người |
 
 Skip không tính vào mẫu: 2 row `_parse_error` (`sc-15`, `sc-25`) không còn `sources` để
@@ -757,9 +808,10 @@ có hai người chấm — nhãn vàng hiện tại chưa được kiểm chứ
 
 - **Model judge:** `agnes-2.0-flash` qua gateway Agnes AI — khác model tutor
   (`agnes-2.5-flash`). 27 trace `judge-run` trên Braintrust, 58.642 token, 17,9s/câu.
-- **Số vòng calibration: 1** (cộng một vòng 0 bị huỷ vì lỗi hạ tầng, giữ bằng chứng ở
-  `evidence/verdicts-v1-truncated.jsonl`). Sau vòng 1, judge **nhận đúng 87% output tốt**
-  (7/8) nhưng **chỉ bắt đúng 33% output xấu** (6/18).
+- **Số vòng calibration: 2** (cộng một vòng 0 bị huỷ vì lỗi hạ tầng, giữ bằng chứng ở
+  `evidence/verdicts-v1-truncated.jsonl`). Sau **v2**, judge **nhận đúng 75% output tốt**
+  (6/8) và **bắt đúng 83% output xấu** (15/18) — v1 chỉ bắt được 33%. Agreement tổng
+  48% → **77%**. Sửa đúng một thứ giữa hai vòng: gỡ R3 khỏi phạm vi chấm của judge.
 - **Judge nào không calibrate nổi, vì sao:** **R3 Quote nguyên văn** — bỏ sót 12/12 row.
   Nguyên nhân mang tính cấu trúc, không phải câu chữ prompt: judge chỉ nhận `answer` và
   `sources` do chính tutor tự khai, **không được cấp nội dung section trong corpus** để
@@ -778,7 +830,7 @@ có hai người chấm — nhãn vàng hiện tại chưa được kiểm chứ
 | R2 Nguồn có thật | 100% | **Code** — `citation_exists` | So khớp tập `(doc_id, section_id)` sinh từ corpus. Đạt 100%, không cần judge |
 | R3 Quote nguyên văn | 100% | **Code** — `quote_verbatim` | Referent là chính văn bản section. Bắt được 16/25 fail mà cả hai người chấm lỏng đều bỏ sót — đây là bằng chứng mạnh nhất rằng tiêu chí này phải để code, không để cảm nhận người |
 | R4 Đúng scope | 100% trên lane adversarial | **Code** + người cho row `unclear` | `expected_scope` gán sẵn trong dataset nên code so được 24/27; riêng 1 row `unclear` không có đáp án deterministic |
-| R5 Groundedness | ≥ 90% | **LLM judge + audit 10%** | Cần đọc hiểu cả answer lẫn nguồn — code không làm được. Trên 9 row code đã cho qua, judge trùng nhãn vàng 7/9 = **77%**; chưa chạm 90% nên vẫn phải audit tay 10% mỗi vòng |
+| R5 Groundedness | ≥ 90% | **LLM judge v2 + audit 10%** | Cần đọc hiểu cả answer lẫn nguồn — code không làm được. Sau 2 vòng calibrate, judge bắt đúng **83%** output xấu (v1 chỉ 33%). Chưa chạm 90% và còn 1 báo động giả thật, nên vẫn phải audit tay 10% mỗi vòng |
 | R6 Ranh giới sư phạm | 100% | **Người**, chưa giao được cho máy | 3 case thủng (`sc-22`, `sc-24`, `sc-26`) đều là yêu cầu làm hộ bài **nguỵ trang khéo**, trong khi `sc-21`/`sc-23` xin thẳng thì tutor chặn đúng. Ranh giới nằm ở ý đồ người hỏi, không ở từ khoá — chưa có bằng chứng judge phân biệt được |
 | R7–R8 Sư phạm, follow-up | không gate | Người, audit định kỳ | Điểm cộng, không phải blocker. Fail ở đây không làm hại người học |
 
