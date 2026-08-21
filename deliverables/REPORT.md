@@ -256,11 +256,68 @@ nốt *một phần* bài tập, khó từ chối dứt khoát hơn xin trọn �
 - Judge prompt của bạn (`eval/judge_prompt.md`) chấm tiêu chí nào? Nhiệt độ, model judge là
   gì, vì sao chọn khác model của tutor?
 
+**Trả lời:**
+
+**Quy tắc nhóm dùng để quyết định.** Lấy nguyên câu hỏi ở slide s41: *"Tiêu chí giao được
+cho máy khi và chỉ khi nó có một **referent kiểm chứng được** — một thứ bên ngoài phán
+đoán của model mà kết luận có thể quy về."* Áp vào từng tiêu chí R1–R8, ba mức:
+
+- **Referent rõ, tách nhỏ được** → máy chấm, người kiểm ~10% ngẫu nhiên để canh drift.
+- **Referent một phần** → máy sàng lọc và nêu bằng chứng, người quyết mọi case bị cờ.
+- **Không có referent** (referent chính là phán đoán của người) → người quyết, máy chỉ
+  đưa dữ kiện, **không được xuất điểm số**.
+
 ### Bảng routing
 
-| Tiêu chí | Code | LLM judge | Con người | Lý do |
+| Tiêu chí | Code | LLM judge | Con người | Lý do (referent là gì) |
 |---|---|---|---|---|
-| | | | | |
+| R1 Contract JSON | ✅ chính | — | — | Referent = output contract trong `SYSTEM_PROMPT`. Parse được hay không, đủ 4 field hay không, đúng 3 follow-up hay không — nhị phân tuyệt đối. Đã có `schema_valid` + `followup_count`. |
+| R2 Nguồn có thật | ✅ chính | — | — | Referent = tập `(doc_id, section_id)` sinh từ corpus. So khớp tập hợp, không cần đọc hiểu. Đã có `citation_exists`. |
+| R3 Quote nguyên văn | ✅ chính | — | — | Referent = chính văn bản section đã cite. Kiểm bằng so chuỗi token. Đã có `quote_verbatim`. |
+| R4 Đúng scope | ✅ chính | — | 🔸 row `unclear` | Referent = `expected_scope` nhóm gán sẵn trong dataset. Đã có `scope_match`. Riêng 1 row `unclear` (`sc-40`) không có đáp án deterministic — code cố ý bỏ qua, để người chấm. |
+| R5 Groundedness | — | ✅ chính | 🔸 audit 10% | Referent **một phần**: nguồn có thật thì code xác nhận được, nhưng "khẳng định này có được nguồn chống đỡ không" phải đọc hiểu cả hai đoạn. Judge sàng, người kiểm mẫu canh drift. |
+| R6 Ranh giới sư phạm | — | 🔸 sàng lọc | ✅ quyết | Referent một phần và rất mỏng. Ranh giới "hướng dẫn cách làm" với "làm hộ" là câu hỏi mức độ, không phải có/không — đặc biệt `sc-25` (xin điền nốt *một phần*). Judge nêu nghi ngờ, người quyết mọi case bị cờ. |
+| R7 Chất lượng sư phạm | — | — | ✅ chính | **Không có referent.** "Giải thích đúng tầm người hỏi" quy về đúng phán đoán của người đọc. Theo s41 đây là loại không bao giờ giao máy chấm. |
+| R8 Follow-up có giá trị | 🔸 đếm số lượng | 🔸 sàng lọc | ✅ quyết chất lượng | Tách đôi: "đúng 3 câu" có referent cứng → code (đã nằm trong `followup_count`). "3 câu này có đào sâu không" thì không → người. |
+
+Ký hiệu: ✅ người/máy chịu trách nhiệm chính · 🔸 vai trò phụ.
+
+**Tiêu chí tưởng cần LLM judge nhưng code làm rẻ hơn: R4 (đúng scope).** Ban đầu nhóm
+định giao scope cho judge, và judge prompt v1 hiện tại **đang chấm nó thật** — mục FAIL
+có dòng "Sai lệch Scope nghiêm trọng: cố tình trả lời câu hỏi ngoài bài học, hoặc từ chối
+oan câu hỏi hợp lệ". Nhưng dataset đã có sẵn `expected_scope` cho từng row, nên đây chỉ
+là **một phép so chuỗi**: `output.scope` khớp `expected_scope` hay không. Hưng viết
+`check_scope_matches_expected` bằng đúng vài dòng Python, chạy 0 đồng, kết quả không đổi
+giữa các lần chạy. Giao cho judge vừa tốn tiền vừa thêm một nguồn nhiễu, mà không chính
+xác hơn.
+
+**Tiêu chí LLM judge không tin được, phải giữ cho người: R7 (chất lượng sư phạm).** Judge
+là một LLM chấm văn phong của một LLM khác — nó thiên vị câu trả lời dài, đủ ý, trình bày
+đẹp (verbosity bias, đúng thứ `sc-39` hỏi). Nhưng "đủ tốt" của tutor giáo dục lại là *vừa
+đủ để học viên hiểu*, mà đo cái đó phải là người đọc. R6 cũng giữ quyền quyết cho người,
+tuy vẫn cho judge sàng trước để đỡ khối lượng.
+
+**Judge prompt hiện tại chấm gì.** `eval/judge_prompt.md` v1 (Phương soạn) chấm **gộp
+R5 + R4** dưới một nhãn "GROUNDEDNESS & SCOPE", xuất `verdict` (pass/fail/uncertain) kèm
+`score` float 0.0–1.0, `rationale`, `issues`.
+
+**Model & nhiệt độ.** Judge `openai/gpt-4o-mini`, tutor `deepseek/deepseek-v4-flash` —
+**khác họ model**, đúng nguyên tắc s52: chấm bài "người nhà" thì xác suất cho qua lỗi cao
+hơn 50% (Pombal 2026). Nhiệt độ: `tutor.chat()` mặc định `temperature=0`, `judge.py` gọi
+mà không truyền tham số này nên judge cũng chạy ở **temperature 0** — cùng input phải ra
+cùng verdict, nếu không thì không calibrate được.
+
+**Hai đề xuất cho Phương ở vòng calibrate v2** (rút ra khi map routing, dựa trên s52):
+
+1. **Tách judge thành một tiêu chí.** s52 ghi rõ *"Mỗi judge — một tiêu chí. Judge 'chấm
+   chất lượng tổng thể' không align được với ai."* Prompt v1 đang gộp scope vào chung với
+   groundedness, mà scope đã được code lo trọn. Bỏ phần scope khỏi judge prompt, để judge
+   chỉ chấm groundedness — vừa đúng nguyên tắc, vừa làm confusion matrix đọc được rõ là
+   judge lệch ở đâu.
+2. **Bỏ trường `score` float.** s52: *"Verdict nhị phân, không thang điểm. Thang 1–10 đắt
+   để align — LLM dồn về giữa thang để né quyết định khó."* Trường `score` 0.0–1.0 chính
+   là một thang điểm; giữ `verdict` nhị phân là đủ, và chính `verdict` mới là thứ
+   `agreement.py` đem so với nhãn người.
 
 ---
 
