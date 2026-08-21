@@ -19,11 +19,39 @@ results-vN.jsonl, labels.csv, judge-prompt-vN.md, verdicts-vN.jsonl, braintrust-
 - Ô nào trong lưới là **rủi ro cao** nhất (trả lời sai thì hại người học)? Ô nào **tần
   suất cao** nhất?
 
+**Trả lời nhanh:**
+
+- **Nhóm người dùng:** Học viên mới (chưa học qua bài nào) · Học viên giữa khoá (đang làm bài tập) · Học viên ôn thi/ôn lại (đã học xong, cần tổng hợp).
+- **Intent:** hỏi khái niệm · bám slide đang xem (deixis) · xin tổng hợp/lộ trình ôn nhiều bài · hỏi mơ hồ/thiếu ngữ cảnh · xin đáp án bài tập (adversarial) · hỏi ngoài lề (out-of-scope).
+- **Ô rủi ro cao nhất:** "Học viên giữa khoá × Xin đáp án" (đang làm bài, cám dỗ xin đáp án cao nhất — tutor bịa/đưa đáp án là hại việc học nặng nhất) và "Ôn thi × Tổng hợp nhiều bài" (retrieval dễ trích sai nguồn khi phải gộp nhiều module).
+- **Ô tần suất cao nhất:** "Học viên giữa khoá × Bám slide" (deixis "giải thích đoạn này" — hành vi thật khi đang học theo bài giảng).
+
 ### Lưới của bạn
 
-| Nhóm user \ Intent | ... | ... | ... |
-|---|---|---|---|
-| ... | | | |
+Dựng theo đúng khung slide **s27–s29** (`tutor/corpus/slides/day19-20-deck.md`) — dùng ví dụ chuẩn của bài (AI Tutor hỏi đáp tài liệu, có trích nguồn). Ký hiệu: ■ chọn test — có ý nghĩa sản phẩm · □ cân nhắc sau · ▨ tổ hợp phi lý — loại.
+
+| Persona \ Intent | Hỏi khái niệm | Bám slide (deixis) | Tổng hợp nhiều bài | Mơ hồ / thiếu ngữ cảnh | Xin đáp án (adversarial) | Ngoài lề |
+|---|---|---|---|---|---|---|
+| **Học viên mới** | ■ test | ■ test | □ cân nhắc sau | ■ test **(risk cao)** | ■ test | ■ test |
+| **Học viên giữa khoá** | ■ test | ■ test **(×2 — tần suất cao nhất)** | ■ test | ■ test **(risk cao)** | ■ test **(risk cao nhất)** | □ cân nhắc sau |
+| **Học viên ôn thi** | ■ test | □ cân nhắc sau | ■ test **(risk cao)** | ■ test | □ cân nhắc sau | ▨ phi lý — loại |
+
+**Vì sao loại/cân nhắc sau:**
+- *Mới × Tổng hợp nhiều bài* — học viên mới chưa học đủ nội dung để hỏi câu cần gộp nhiều module, tần suất thấp.
+- *Giữa khoá × Ngoài lề* — đang tập trung làm bài, ít khi lạc đề hơn nhóm Mới.
+- *Ôn thi × Bám slide* — giai đoạn ôn thường hỏi tổng hợp xuyên suốt hơn là bám đúng 1 slide.
+- *Ôn thi × Xin đáp án* — ít "bài tập mới" ở giai đoạn ôn, để dành nếu thiếu quota.
+- *Ôn thi × Ngoài lề* — tổ hợp vô nghĩa, học viên ôn thi nghiêm túc hiếm khi tán gẫu với tutor.
+
+**Kiểm dimension (test s26):** đổi persona hoặc intent có làm hành vi *đúng* của tutor đổi theo không? Có — "Mới × khái niệm" cần giải thích từ nền, còn "Ôn thi × tổng hợp" cần cite nhiều nguồn + không lặp follow-up đã hỏi trước đó → cả hai trục đều là dimension thật, không chỉ là paraphrase.
+
+### Quota theo lane (khớp `sc-1x/2x/3x` trong TEAM-PLAN.md)
+
+| Lane | Người | Cột trong lưới | Số ô ■ | Câu (mỗi ô 2–3 cách diễn đạt) |
+|---|---|---|---|---|
+| `sc-1x` | Loan | Hỏi khái niệm + Bám slide + Tổng hợp nhiều bài | 8 ô | 8–10 câu |
+| `sc-2x` | Hưng | Xin đáp án + Ngoài lề | 3 ô | 8–9 câu |
+| `sc-3x` | Phương | Mơ hồ / thiếu ngữ cảnh (+ near-miss trên ô Tổng hợp) | 3 ô | 8–9 câu |
 
 ---
 
@@ -39,11 +67,32 @@ results-vN.jsonl, labels.csv, judge-prompt-vN.md, verdicts-vN.jsonl, braintrust-
   rủi ro cao)?
 - Nếu chỉ được giữ 10 câu, bạn giữ 10 câu nào? Vì sao?
 
+**Phát hiện khi review (Loan, khi soạn lane `sc-1x`):** `tutor/corpus/manifest.json`
+**bị lệch số slide so với file thật** `tutor/corpus/slides/day19-20-deck.md` — ví dụ
+manifest ghi `s51` = "Vì sao calibration là bước cốt lõi" nhưng mở file thật thì `s51`
+lại là một slide tiêu đề phần khác ("PA R T 06"); nội dung calibration thật nằm ở `s56`.
+Kể cả ví dụ mẫu trong README (`s51`, `s29`) cũng bị lệch theo cách này. Nguyên nhân:
+`tutor.py` (`load_corpus()`) parse **trực tiếp header `## sNN —` trong file `.md`** để
+tạo `section_id` dùng cho retrieval và validate citation (`check_citation_exists` trong
+`code_checks.py`) — không đọc qua `manifest.json`. Vậy manifest chỉ là tài liệu tham
+khảo cũ, **không phải nguồn thật cho `metadata.slide`**. Đã báo Hưng + Phương tránh copy
+id/title theo manifest khi viết lane `sc-2x`/`sc-3x` — phải grep trực tiếp
+`^## sNN —` trong file slide để lấy đúng `id` + `title`.
+
 ### Danh sách scenario (bảng tóm tắt)
 
 | scenario_id | ô trong lưới | expected | nguồn câu hỏi |
 |---|---|---|---|
-| | | | |
+| sc-11-in-concept-trace | Học viên mới × Hỏi khái niệm | in_scope | Loan viết, bám s32 |
+| sc-12-in-deixis-vibecheck | Học viên mới × Bám slide | in_scope | Loan viết, bám s15 |
+| sc-13-in-concept-codebased | Giữa khoá × Hỏi khái niệm | in_scope | Loan viết, bám s40 |
+| sc-14-in-deixis-tracecode | Giữa khoá × Bám slide (variant 1) | in_scope | Loan viết, bám s35 |
+| sc-15-in-deixis-goldenoutput | Giữa khoá × Bám slide (variant 2) | in_scope | Loan viết, bám s16 |
+| sc-16-in-synth-pipeline-concepts | Giữa khoá × Tổng hợp nhiều bài | in_scope | Loan viết, không gắn slide (cố ý) |
+| sc-17-in-concept-passrate | Ôn thi × Hỏi khái niệm | in_scope | Loan viết, bám s48 |
+| sc-18-in-synth-fullpipeline | Ôn thi × Tổng hợp nhiều bài | in_scope | Loan viết, không gắn slide (cố ý) |
+| *(chờ lane `sc-2x` của Hưng — out-of-scope + adversarial)* | | | |
+| *(chờ lane `sc-3x` của Phương — mơ hồ + near-miss)* | | | |
 
 ---
 
