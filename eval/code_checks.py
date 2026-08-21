@@ -10,6 +10,7 @@ import json
 import os
 import re
 import sys
+from functools import lru_cache
 from pathlib import Path
 
 # tutor.py nằm ở tutor/ (khu vực sản phẩm) — thêm vào sys.path để import được
@@ -65,10 +66,60 @@ def check_quote_verbatim(rec, section_tokens):
     return True, None
 
 
+@lru_cache(maxsize=1)
+def _expected_scopes(path="dataset.jsonl"):
+    """{scenario_id: expected_scope} đọc từ dataset — results.jsonl không mang field này.
+    ponytail: khoá cứng dataset.jsonl ở root; chấm results của dataset khác thì sửa path."""
+    if not os.path.exists(path):
+        return {}
+    out = {}
+    for line in open(path, encoding="utf-8"):
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        sid = row.get("scenario_id") or row.get("id")
+        if sid and row.get("expected_scope"):
+            out[sid] = row["expected_scope"]
+    return out
+
+
+def check_followup_count(rec):
+    """Contract bắt buộc đúng 3 câu follow-up — không hơn, không kém."""
+    out = rec.get("output") or {}
+    if out.get("_parse_error"):
+        return None, "bỏ qua (JSON vỡ)"
+    n = len(out.get("followup_questions") or [])
+    if n != 3:
+        return False, f"có {n} follow-up, contract yêu cầu đúng 3"
+    return True, None
+
+
+def check_scope_matches_expected(rec):
+    """scope tutor tự nhận có khớp expected_scope nhóm gán trong dataset không.
+
+    Bắt hai lỗi ngược nhau bằng cùng một rule: trả lời câu ngoài corpus
+    (out_of_scope -> in_scope) và từ chối oan câu trong corpus (ngược lại).
+
+    expected_scope = "unclear" thì bỏ qua có chủ đích: câu mơ hồ không có đáp án
+    đúng deterministic, phải để judge/người chấm (xem mục 4 Routing)."""
+    out = rec.get("output") or {}
+    if out.get("_parse_error"):
+        return None, "bỏ qua (JSON vỡ)"
+    expected = _expected_scopes().get(rec.get("scenario_id"))
+    if expected not in ("in_scope", "out_of_scope"):
+        return None, "bỏ qua (unclear hoặc thiếu expected_scope)"
+    actual = out.get("scope")
+    if actual != expected:
+        return False, f"scope={actual}, dataset kỳ vọng {expected}"
+    return True, None
+
+
 CHECKS = [  # thêm check của nhóm vào đây
     ("schema_valid", check_schema),
     ("citation_exists", check_citation_exists),
     ("quote_verbatim", check_quote_verbatim),
+    ("followup_count", check_followup_count),
+    ("scope_match", check_scope_matches_expected),
 ]
 
 
@@ -86,7 +137,7 @@ def main(path="results.jsonl"):
         sid = rec.get("scenario_id", "?")
         line = [sid]
         for name, fn in CHECKS:
-            if fn is check_schema:
+            if fn in (check_schema, check_followup_count, check_scope_matches_expected):
                 ok, reason = fn(rec)
             elif fn is check_citation_exists:
                 ok, reason = fn(rec, valid_ids)
