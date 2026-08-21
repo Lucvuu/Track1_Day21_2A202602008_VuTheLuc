@@ -10,3 +10,6 @@ __pycache__/
 /report.html
 .venv/
 .claude/
+
+# evidence/ la bai nop — nhan nguoi trong do PHAI commit (ghi de rule labels-*.csv o tren)
+!deliverables/evidence/labels*.csv
