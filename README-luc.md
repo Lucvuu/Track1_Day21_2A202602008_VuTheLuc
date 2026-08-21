@@ -23,7 +23,7 @@ học, output JSON `{scope, answer, sources, followup_questions}`.
 
 **Bài nộp:** [`deliverables/REPORT.md`](deliverables/REPORT.md) — 7 mục theo phase ·
 [`deliverables/evidence/`](deliverables/evidence/) — data thô ·
-[`ai-support-log.md`](ai-support-log.md)
+[`deliverables/ai-support-log-luc.md`](deliverables/ai-support-log-luc.md)
 
 **Repo chung của nhóm:** https://github.com/tuanhugnVI/K3-Track1-Day20-21-AI-Evaluation
 
